@@ -1,0 +1,346 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		03644E9213611C720015EC74 /* magnifier-ranged-hi@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 03644E8E13611C720015EC74 /* magnifier-ranged-hi@2x.png */; };
+		03644E9313611C720015EC74 /* magnifier-ranged-lo-stemless@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 03644E8F13611C720015EC74 /* magnifier-ranged-lo-stemless@2x.png */; };
+		03644E9413611C720015EC74 /* magnifier-ranged-lo@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 03644E9013611C720015EC74 /* magnifier-ranged-lo@2x.png */; };
+		03644E9513611C720015EC74 /* magnifier-ranged-mask@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 03644E9113611C720015EC74 /* magnifier-ranged-mask@2x.png */; };
+		03C94662135E90E000EF024B /* drag-dot@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 03C94661135E90E000EF024B /* drag-dot@2x.png */; };
+		03CDA265135DF850003B567F /* loupe-hi@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 03CDA262135DF850003B567F /* loupe-hi@2x.png */; };
+		03CDA266135DF850003B567F /* loupe-lo@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 03CDA263135DF850003B567F /* loupe-lo@2x.png */; };
+		03CDA267135DF850003B567F /* loupe-mask@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 03CDA264135DF850003B567F /* loupe-mask@2x.png */; };
+		03FF5ECC135CA49D00268656 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 03FF5ECB135CA49D00268656 /* UIKit.framework */; };
+		03FF5ECE135CA49D00268656 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 03FF5ECD135CA49D00268656 /* Foundation.framework */; };
+		03FF5ED0135CA49D00268656 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 03FF5ECF135CA49D00268656 /* CoreGraphics.framework */; };
+		03FF5ED6135CA49D00268656 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 03FF5ED4135CA49D00268656 /* InfoPlist.strings */; };
+		03FF5ED9135CA49D00268656 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 03FF5ED8135CA49D00268656 /* main.m */; };
+		03FF5EDC135CA49D00268656 /* EGOTextView_DemoAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 03FF5EDB135CA49D00268656 /* EGOTextView_DemoAppDelegate.m */; };
+		03FF5EDF135CA49E00268656 /* MainWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = 03FF5EDD135CA49E00268656 /* MainWindow.xib */; };
+		03FF5EE2135CA49E00268656 /* EGOTextView_DemoViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 03FF5EE1135CA49E00268656 /* EGOTextView_DemoViewController.m */; };
+		03FF5EE5135CA49E00268656 /* EGOTextView_DemoViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 03FF5EE3135CA49E00268656 /* EGOTextView_DemoViewController.xib */; };
+		03FF5EEE135CA4DA00268656 /* EGOTextView.m in Sources */ = {isa = PBXBuildFile; fileRef = 03FF5EED135CA4DA00268656 /* EGOTextView.m */; };
+		03FF5EFB135CA6AC00268656 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 03FF5EFA135CA6AC00268656 /* QuartzCore.framework */; };
+		03FF5EFD135CA6B200268656 /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 03FF5EFC135CA6B200268656 /* CoreText.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		03644E8E13611C720015EC74 /* magnifier-ranged-hi@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "magnifier-ranged-hi@2x.png"; sourceTree = "<group>"; };
+		03644E8F13611C720015EC74 /* magnifier-ranged-lo-stemless@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "magnifier-ranged-lo-stemless@2x.png"; sourceTree = "<group>"; };
+		03644E9013611C720015EC74 /* magnifier-ranged-lo@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "magnifier-ranged-lo@2x.png"; sourceTree = "<group>"; };
+		03644E9113611C720015EC74 /* magnifier-ranged-mask@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "magnifier-ranged-mask@2x.png"; sourceTree = "<group>"; };
+		03C94661135E90E000EF024B /* drag-dot@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "drag-dot@2x.png"; sourceTree = "<group>"; };
+		03CDA262135DF850003B567F /* loupe-hi@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "loupe-hi@2x.png"; sourceTree = "<group>"; };
+		03CDA263135DF850003B567F /* loupe-lo@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "loupe-lo@2x.png"; sourceTree = "<group>"; };
+		03CDA264135DF850003B567F /* loupe-mask@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "loupe-mask@2x.png"; sourceTree = "<group>"; };
+		03FF5EC7135CA49D00268656 /* EGOTextView_Demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EGOTextView_Demo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		03FF5ECB135CA49D00268656 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		03FF5ECD135CA49D00268656 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		03FF5ECF135CA49D00268656 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		03FF5ED3135CA49D00268656 /* EGOTextView_Demo-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "EGOTextView_Demo-Info.plist"; sourceTree = "<group>"; };
+		03FF5ED5135CA49D00268656 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		03FF5ED7135CA49D00268656 /* EGOTextView_Demo-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "EGOTextView_Demo-Prefix.pch"; sourceTree = "<group>"; };
+		03FF5ED8135CA49D00268656 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		03FF5EDA135CA49D00268656 /* EGOTextView_DemoAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EGOTextView_DemoAppDelegate.h; sourceTree = "<group>"; };
+		03FF5EDB135CA49D00268656 /* EGOTextView_DemoAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EGOTextView_DemoAppDelegate.m; sourceTree = "<group>"; };
+		03FF5EDE135CA49E00268656 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/MainWindow.xib; sourceTree = "<group>"; };
+		03FF5EE0135CA49E00268656 /* EGOTextView_DemoViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EGOTextView_DemoViewController.h; sourceTree = "<group>"; };
+		03FF5EE1135CA49E00268656 /* EGOTextView_DemoViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EGOTextView_DemoViewController.m; sourceTree = "<group>"; };
+		03FF5EE4135CA49E00268656 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/EGOTextView_DemoViewController.xib; sourceTree = "<group>"; };
+		03FF5EEC135CA4DA00268656 /* EGOTextView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EGOTextView.h; sourceTree = "<group>"; };
+		03FF5EED135CA4DA00268656 /* EGOTextView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EGOTextView.m; sourceTree = "<group>"; };
+		03FF5EFA135CA6AC00268656 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		03FF5EFC135CA6B200268656 /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		03FF5EC4135CA49D00268656 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				03FF5EFD135CA6B200268656 /* CoreText.framework in Frameworks */,
+				03FF5EFB135CA6AC00268656 /* QuartzCore.framework in Frameworks */,
+				03FF5ECC135CA49D00268656 /* UIKit.framework in Frameworks */,
+				03FF5ECE135CA49D00268656 /* Foundation.framework in Frameworks */,
+				03FF5ED0135CA49D00268656 /* CoreGraphics.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		03CDA261135DF850003B567F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				03644E8E13611C720015EC74 /* magnifier-ranged-hi@2x.png */,
+				03644E8F13611C720015EC74 /* magnifier-ranged-lo-stemless@2x.png */,
+				03644E9013611C720015EC74 /* magnifier-ranged-lo@2x.png */,
+				03644E9113611C720015EC74 /* magnifier-ranged-mask@2x.png */,
+				03C94661135E90E000EF024B /* drag-dot@2x.png */,
+				03CDA262135DF850003B567F /* loupe-hi@2x.png */,
+				03CDA263135DF850003B567F /* loupe-lo@2x.png */,
+				03CDA264135DF850003B567F /* loupe-mask@2x.png */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		03FF5EBC135CA49D00268656 = {
+			isa = PBXGroup;
+			children = (
+				03FF5ED1135CA49D00268656 /* EGOTextView_Demo */,
+				03FF5ECA135CA49D00268656 /* Frameworks */,
+				03FF5EC8135CA49D00268656 /* Products */,
+				03FF5EFC135CA6B200268656 /* CoreText.framework */,
+				03FF5EFA135CA6AC00268656 /* QuartzCore.framework */,
+			);
+			sourceTree = "<group>";
+		};
+		03FF5EC8135CA49D00268656 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				03FF5EC7135CA49D00268656 /* EGOTextView_Demo.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		03FF5ECA135CA49D00268656 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				03FF5ECB135CA49D00268656 /* UIKit.framework */,
+				03FF5ECD135CA49D00268656 /* Foundation.framework */,
+				03FF5ECF135CA49D00268656 /* CoreGraphics.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		03FF5ED1135CA49D00268656 /* EGOTextView_Demo */ = {
+			isa = PBXGroup;
+			children = (
+				03FF5EEB135CA4AC00268656 /* EGOTextView */,
+				03FF5EDA135CA49D00268656 /* EGOTextView_DemoAppDelegate.h */,
+				03FF5EDB135CA49D00268656 /* EGOTextView_DemoAppDelegate.m */,
+				03FF5EDD135CA49E00268656 /* MainWindow.xib */,
+				03FF5EE0135CA49E00268656 /* EGOTextView_DemoViewController.h */,
+				03FF5EE1135CA49E00268656 /* EGOTextView_DemoViewController.m */,
+				03FF5EE3135CA49E00268656 /* EGOTextView_DemoViewController.xib */,
+				03FF5ED2135CA49D00268656 /* Supporting Files */,
+			);
+			path = EGOTextView_Demo;
+			sourceTree = "<group>";
+		};
+		03FF5ED2135CA49D00268656 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				03FF5ED3135CA49D00268656 /* EGOTextView_Demo-Info.plist */,
+				03FF5ED4135CA49D00268656 /* InfoPlist.strings */,
+				03FF5ED7135CA49D00268656 /* EGOTextView_Demo-Prefix.pch */,
+				03FF5ED8135CA49D00268656 /* main.m */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		03FF5EEB135CA4AC00268656 /* EGOTextView */ = {
+			isa = PBXGroup;
+			children = (
+				03CDA261135DF850003B567F /* Resources */,
+				03FF5EEC135CA4DA00268656 /* EGOTextView.h */,
+				03FF5EED135CA4DA00268656 /* EGOTextView.m */,
+			);
+			path = EGOTextView;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		03FF5EC6135CA49D00268656 /* EGOTextView_Demo */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 03FF5EE8135CA49E00268656 /* Build configuration list for PBXNativeTarget "EGOTextView_Demo" */;
+			buildPhases = (
+				03FF5EC3135CA49D00268656 /* Sources */,
+				03FF5EC4135CA49D00268656 /* Frameworks */,
+				03FF5EC5135CA49D00268656 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = EGOTextView_Demo;
+			productName = EGOTextView_Demo;
+			productReference = 03FF5EC7135CA49D00268656 /* EGOTextView_Demo.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		03FF5EBE135CA49D00268656 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 03FF5EC1135CA49D00268656 /* Build configuration list for PBXProject "EGOTextView_Demo" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 03FF5EBC135CA49D00268656;
+			productRefGroup = 03FF5EC8135CA49D00268656 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				03FF5EC6135CA49D00268656 /* EGOTextView_Demo */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		03FF5EC5135CA49D00268656 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				03FF5ED6135CA49D00268656 /* InfoPlist.strings in Resources */,
+				03FF5EDF135CA49E00268656 /* MainWindow.xib in Resources */,
+				03FF5EE5135CA49E00268656 /* EGOTextView_DemoViewController.xib in Resources */,
+				03CDA265135DF850003B567F /* loupe-hi@2x.png in Resources */,
+				03CDA266135DF850003B567F /* loupe-lo@2x.png in Resources */,
+				03CDA267135DF850003B567F /* loupe-mask@2x.png in Resources */,
+				03C94662135E90E000EF024B /* drag-dot@2x.png in Resources */,
+				03644E9213611C720015EC74 /* magnifier-ranged-hi@2x.png in Resources */,
+				03644E9313611C720015EC74 /* magnifier-ranged-lo-stemless@2x.png in Resources */,
+				03644E9413611C720015EC74 /* magnifier-ranged-lo@2x.png in Resources */,
+				03644E9513611C720015EC74 /* magnifier-ranged-mask@2x.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		03FF5EC3135CA49D00268656 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				03FF5ED9135CA49D00268656 /* main.m in Sources */,
+				03FF5EDC135CA49D00268656 /* EGOTextView_DemoAppDelegate.m in Sources */,
+				03FF5EE2135CA49E00268656 /* EGOTextView_DemoViewController.m in Sources */,
+				03FF5EEE135CA4DA00268656 /* EGOTextView.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		03FF5ED4135CA49D00268656 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				03FF5ED5135CA49D00268656 /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		03FF5EDD135CA49E00268656 /* MainWindow.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				03FF5EDE135CA49E00268656 /* en */,
+			);
+			name = MainWindow.xib;
+			sourceTree = "<group>";
+		};
+		03FF5EE3135CA49E00268656 /* EGOTextView_DemoViewController.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				03FF5EE4135CA49E00268656 /* en */,
+			);
+			name = EGOTextView_DemoViewController.xib;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		03FF5EE6135CA49E00268656 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1";
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 4.2;
+				SDKROOT = iphoneos;
+			};
+			name = Debug;
+		};
+		03FF5EE7135CA49E00268656 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 4.2;
+				OTHER_CFLAGS = "-DNS_BLOCK_ASSERTIONS=1";
+				SDKROOT = iphoneos;
+			};
+			name = Release;
+		};
+		03FF5EE9135CA49E00268656 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "EGOTextView_Demo/EGOTextView_Demo-Prefix.pch";
+				INFOPLIST_FILE = "EGOTextView_Demo/EGOTextView_Demo-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Debug;
+		};
+		03FF5EEA135CA49E00268656 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "EGOTextView_Demo/EGOTextView_Demo-Prefix.pch";
+				INFOPLIST_FILE = "EGOTextView_Demo/EGOTextView_Demo-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				VALIDATE_PRODUCT = YES;
+				WRAPPER_EXTENSION = app;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		03FF5EC1135CA49D00268656 /* Build configuration list for PBXProject "EGOTextView_Demo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				03FF5EE6135CA49E00268656 /* Debug */,
+				03FF5EE7135CA49E00268656 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		03FF5EE8135CA49E00268656 /* Build configuration list for PBXNativeTarget "EGOTextView_Demo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				03FF5EE9135CA49E00268656 /* Debug */,
+				03FF5EEA135CA49E00268656 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 03FF5EBE135CA49D00268656 /* Project object */;
+}
