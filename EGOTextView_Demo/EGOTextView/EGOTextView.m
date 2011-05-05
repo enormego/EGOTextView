@@ -1,9 +1,26 @@
 //
 //  EGOTextView.m
-//  EGOTextView_Demo
 //
 //  Created by Devin Doty on 4/18/11.
-//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//  Copyright (C) 2011 by enormego.
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a copy
+//  of this software and associated documentation files (the "Software"), to deal
+//  in the Software without restriction, including without limitation the rights
+//  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//  copies of the Software, and to permit persons to whom the Software is
+//  furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included in
+//  all copies or substantial portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+//  THE SOFTWARE.
 //
 
 #import "EGOTextView.h"
@@ -17,7 +34,7 @@ typedef enum {
 } EGOWindowType;
 
 typedef enum {
-    EGOSelectionTypeLeft=0,
+    EGOSelectionTypeLeft = 0,
     EGOSelectionTypeRight,
 } EGOSelectionType;
 
@@ -124,6 +141,8 @@ typedef enum {
     id <UITextInputDelegate>           _inputDelegate;
     UITextInputStringTokenizer         *_tokenizer;
     UITextChecker                      *_textChecker;
+    BOOL                                _ignoreSelectionMenu;
+    UILongPressGestureRecognizer       *_longPress;
 
 
 @property(nonatomic) UITextAutocapitalizationType autocapitalizationType;
@@ -136,12 +155,14 @@ typedef enum {
 - (CGRect)caretRectForIndex:(int)index;
 - (CGRect)firstRectForNSRange:(NSRange)range;
 - (NSInteger)closestIndexToPoint:(CGPoint)point;
-- (NSInteger)closestWhiteSpaceIndexToPoint:(CGPoint)point;
 - (NSRange)characterRangeAtPoint_:(CGPoint)point;
-- (void)checkSpelling;
+- (void)checkSpellingForRange:(NSRange)range;
 - (void)textChanged;
 - (void)removeCorrectionAttributesForRange:(NSRange)range;
 - (void)insertCorrectionAttributesForRange:(NSRange)range;
+- (void)showCorrectionMenuForRange:(NSRange)range;
+- (void)showMenu;
+- (CGRect)menuPresentationRect;
 
 + (UIColor *)selectionColor;
 + (UIColor *)spellingSelectionColor;
@@ -160,8 +181,8 @@ typedef enum {
 
 @synthesize delegate;
 @synthesize attributedString=_attributedString;
+@synthesize text=_text;
 @synthesize font=_font;
-@synthesize editing=_editing;
 @synthesize editable=_editable;
 @synthesize markedRange=_markedRange;
 @synthesize selectedRange=_selectedRange;
@@ -181,7 +202,7 @@ typedef enum {
 
 - (id)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
-                
+        
         [self setText:@""];
         self.alwaysBounceVertical = YES;
         self.editable = YES;
@@ -197,9 +218,19 @@ typedef enum {
         [contentView release];
             
         UILongPressGestureRecognizer *gesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
+        gesture.delegate = (id<UIGestureRecognizerDelegate>)self;
         [self addGestureRecognizer:gesture];
         [gesture release];
         _longPress = gesture;
+        
+        UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(doubleTap:)];
+        [doubleTap setNumberOfTapsRequired:2];
+        [self addGestureRecognizer:doubleTap];
+        [doubleTap release];
+        
+        UITapGestureRecognizer *singleTap =  [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tap:)];
+        [self addGestureRecognizer:singleTap];
+        [singleTap release];
 
     }
     return self;
@@ -287,26 +318,30 @@ typedef enum {
     return _attributedString.string;
 }
 
-- (void)setAttributedString:(NSAttributedString*)string {
+- (void)setText:(NSString *)text {
     
+    [self.inputDelegate textWillChange:self];       
+
+    NSAttributedString *string = [[NSAttributedString alloc] initWithString:text attributes:self.defaultAttributes];
+    [self setAttributedString:string];
+    [string release];
+    
+    [self.inputDelegate textDidChange:self];       
+
+}
+
+- (void)setAttributedString:(NSAttributedString*)string {
+
     NSAttributedString *aString = _attributedString;
     _attributedString = [string copy];
     [aString release], aString = nil;
     
     [self textChanged];
 
-    if (([self.delegate respondsToSelector:@selector(textViewDidChange:)])) {
-        [self.delegate textViewDidChange:self];
+    if (([self.delegate respondsToSelector:@selector(egoTextViewDidChange:)])) {
+        [self.delegate egoTextViewDidChange:self];
     }
     
-}
-
-- (void)setText:(NSString *)_text {
-    
-    NSAttributedString *string = [[NSAttributedString alloc] initWithString:_text attributes:self.defaultAttributes];
-    [self setAttributedString:string];
-    [string release];
-
 }
 
 
@@ -369,7 +404,7 @@ typedef enum {
 
 - (void)drawBoundingRangeAsSelection:(NSRange)selectionRange {
 	
-    if (!self.editing || selectionRange.length == 0 || selectionRange.location == NSNotFound) {
+    if (selectionRange.length == 0 || selectionRange.location == NSNotFound) {
         return;
     }
     
@@ -440,65 +475,84 @@ typedef enum {
 - (NSInteger)closestWhiteSpaceIndexToPoint:(CGPoint)point {
     
     point = [self convertPoint:point toView:_textContentView];
-    __block NSArray *lines = (NSArray*)CTFrameGetLines(_frame);
+    NSArray *lines = (NSArray*)CTFrameGetLines(_frame);
     NSInteger count = [lines count];
     CGPoint *origins = (CGPoint*)malloc(count * sizeof(CGPoint));
     CTFrameGetLineOrigins(_frame, CFRangeMake(0, count), origins); 
+    
     __block NSRange returnRange = NSMakeRange(_attributedString.length, 0);
     
     for (int i = 0; i < lines.count; i++) {
+        
         if (point.y > origins[i].y) {
             
             CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
-            CFIndex index = CTLineGetStringIndexForPosition(line, point);  
-           
-            char character = [_attributedString.string characterAtIndex:MAX(0, index-1)];
-            if (character == '\n' || character == ' ') {
-                returnRange = NSMakeRange(index, 0);
+            CFRange cfRange = CTLineGetStringRange(line);
+            NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
+            CFIndex cfIndex = CTLineGetStringIndexForPosition(line, point);
+            NSInteger index = cfIndex == kCFNotFound ? NSNotFound : cfIndex;
+                    
+            if(range.location==NSNotFound)
+                break;
+            
+            if (index>=_attributedString.length) {
+                returnRange = NSMakeRange(_attributedString.length, 0);
                 break;
             }
             
-            CFRange cfRange = CTLineGetStringRange(line);
-            NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
-
-            if (index==_attributedString.length) {
+            if (range.length <= 1) {
+                returnRange = NSMakeRange(range.location, 0);
                 break;
-            } else if (index==range.location){
-                returnRange = NSMakeRange(index, 0);
-                break;
+            }
+            
+            if (index == range.location) {
+                returnRange = NSMakeRange(range.location, 0);
+                break;                
+            }
+            
+        
+            if (index >= (range.location+range.length)) {
+                
+                if (range.length > 1 && [_attributedString.string characterAtIndex:(range.location+range.length)-1] == '\n') {
+                    
+                    returnRange = NSMakeRange(index-1, 0);
+                    break;
+                    
+                } else {
+                    
+                    returnRange = NSMakeRange(range.location+range.length, 0);
+                    break;
+                    
+                }
+               
             }
             
             [_attributedString.string enumerateSubstringsInRange:range options:NSStringEnumerationByWords usingBlock:^(NSString *subString, NSRange subStringRange, NSRange enclosingRange, BOOL *stop){
-
-                if ((index - enclosingRange.location <= enclosingRange.length)) {
-
-                    if (subStringRange.length == 1) {
-                    
-                        returnRange = subStringRange;
-                    
-                    } else if (index < roundf((subStringRange.length/2))) {
+                
+                
+                if (NSLocationInRange(index, enclosingRange)) {
+                                    
+                    if (index > (enclosingRange.location+(enclosingRange.length/2))) {
+                        
+                        returnRange = NSMakeRange(subStringRange.location+subStringRange.length, 0);
+                        
+                    } else {
                         
                         returnRange = NSMakeRange(subStringRange.location, 0);
                         
-                    } else {
-
-                        returnRange = NSMakeRange(subStringRange.location+subStringRange.length, 0);
-                        
                     }
-
-                    *stop = YES;
                     
+                    *stop = YES;
                 }
                 
             }];
             
             break;
+            
         }
     }
-    
-    free(origins);
-    return  returnRange.location;
-    
+
+    return returnRange.location;
 }
 
 - (NSInteger)closestIndexToPoint:(CGPoint)point {	
@@ -508,17 +562,22 @@ typedef enum {
     NSInteger count = [lines count];
     CGPoint *origins = (CGPoint*)malloc(count * sizeof(CGPoint));
     CTFrameGetLineOrigins(_frame, CFRangeMake(0, count), origins);    
+    CFIndex index = kCFNotFound;
     
     for (int i = 0; i < lines.count; i++) {
         if (point.y > origins[i].y) {
             CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
-            free(origins);
-            return CTLineGetStringIndexForPosition(line, point);            
+            index = CTLineGetStringIndexForPosition(line, point);  
+            break;
         }
     }
     
+    if (index == kCFNotFound) {
+        index = [_attributedString length];
+    }
+    
     free(origins);
-    return  [_attributedString length];
+    return index;
     
 }
 
@@ -531,6 +590,7 @@ typedef enum {
     __block NSRange returnRange = NSMakeRange(NSNotFound, 0);
 
     for (int i = 0; i < lines.count; i++) {
+        
         if (point.y > origins[i].y) {
 
             CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
@@ -538,7 +598,7 @@ typedef enum {
            
             CFRange cfRange = CTLineGetStringRange(line);
             NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
-
+            
             [_attributedString.string enumerateSubstringsInRange:range options:NSStringEnumerationByWords usingBlock:^(NSString *subString, NSRange subStringRange, NSRange enclosingRange, BOOL *stop){
                 
                 if (index - subStringRange.location <= subStringRange.length) {
@@ -547,6 +607,7 @@ typedef enum {
                 }
                 
             }];
+            
             break;
         }
     }
@@ -556,76 +617,59 @@ typedef enum {
     
 }
 
-
 - (NSRange)characterRangeAtIndex:(NSInteger)index {
     
     __block NSArray *lines = (NSArray*)CTFrameGetLines(_frame);
     NSInteger count = [lines count];  
-   __block NSRange returnRange = NSMakeRange(NSNotFound, 0);
-       
-    for (int i=count-1; i >= 0; i--) {
+    __block NSRange returnRange = NSMakeRange(NSNotFound, 0);
+    
+    for (int i=0; i < count; i++) {
         
         __block CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
         CFRange cfRange = CTLineGetStringRange(line);
         NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length == kCFNotFound ? 0 : cfRange.length);
         
-        if ((index - range.location <= range.length)) {
-  
-            [_attributedString.string enumerateSubstringsInRange:range options:NSStringEnumerationByWords usingBlock:^(NSString *subString, NSRange subStringRange, NSRange enclosingRange, BOOL *stop){
-                
-                if (index - subStringRange.location <= subStringRange.length) {
-                    returnRange = subStringRange;
-                    *stop = YES;
-                }
-   
-            }];
+        if (NSLocationInRange(MAX(0, index-1), range)) {
             
+            if (range.length > 1) {
+                
+                [_attributedString.string enumerateSubstringsInRange:range options:NSStringEnumerationByWords usingBlock:^(NSString *subString, NSRange subStringRange, NSRange enclosingRange, BOOL *stop){
+                    
+                    if (index - subStringRange.location <= subStringRange.length) {
+                        returnRange = subStringRange;
+                        *stop = YES;
+                    }
+                    
+                }];
+                
+            }
+
             break;
         }
     }
-
+    
     return returnRange;
     
 }
 
 - (CGRect)caretRectForIndex:(NSInteger)index {  
-    
-    if(_attributedString==nil) return CGRectZero;
-
+        
     NSArray *lines = (NSArray*)CTFrameGetLines(_frame);
     
-    if (_attributedString.length == 0) {
+    // no text / first index
+    if (_attributedString.length == 0 || index == 0) {
         CGPoint origin = CGPointMake(CGRectGetMinX(_textContentView.bounds), CGRectGetMaxY(_textContentView.bounds) - self.font.leading);
-        return CGRectMake(origin.x, origin.y - fabs(self.font.descender), 3, MAX(self.font.ascender + fabs(self.font.descender), self.font.lineHeight));
+        return CGRectMake(origin.x, origin.y, 3, self.font.ascender + fabs(self.font.descender*2));
     }    
-    
-    /*
-    if (_selectedRange.length > 0 && [_attributedString.string characterAtIndex:index-1] == '\n') {
-        
+
+    // last index is newline
+    if (index == _attributedString.length && [_attributedString.string characterAtIndex:(index - 1)] == '\n' ) {
+       
         CTLineRef line = (CTLineRef)[lines lastObject];
         CFRange range = CTLineGetStringRange(line);
         CGFloat xPos = CTLineGetOffsetForStringIndex(line, range.location, NULL);
         CGFloat ascent, descent;
         CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
-        
-        CGPoint origin;
-        CGPoint *origins = (CGPoint*)malloc(1 * sizeof(CGPoint));
-        CTFrameGetLineOrigins(_frame, CFRangeMake([lines count]-1, 0), origins);
-        origin = origins[0];
-        free(origins);
-        
-        origin.y -= self.font.leading;
-        return CGRectMake(_textContentView.bounds.size.width - 3.0f, floorf(origin.y - descent), 3, MAX(floorf(ascent + descent), self.font.lineHeight));  
-        
-    }*/
-
-    if (index == _attributedString.length && [_attributedString.string characterAtIndex:(index - 1)] == '\n' ) {
-       
-        CTLineRef line = (CTLineRef) [lines lastObject];
-        CFRange range = CTLineGetStringRange(line);
-        CGFloat xPos = CTLineGetOffsetForStringIndex(line, range.location, NULL);
-        CGFloat ascent, descent;
-        CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
 
         CGPoint origin;
         CGPoint *origins = (CGPoint*)malloc(1 * sizeof(CGPoint));
@@ -634,7 +678,7 @@ typedef enum {
         free(origins);
         
         origin.y -= self.font.leading;
-        return CGRectMake(xPos, floorf(origin.y - descent), 3, MAX(floorf(ascent + descent), self.font.lineHeight));   
+        return CGRectMake(xPos, floorf(origin.y - descent), 3, ceilf((descent*2) + ascent));  
         
     }
 
@@ -645,32 +689,34 @@ typedef enum {
     CGPoint *origins = (CGPoint*)malloc(count * sizeof(CGPoint));
     CTFrameGetLineOrigins(_frame, CFRangeMake(0, count), origins);
     CGRect returnRect = CGRectZero;
-    
-    for (int i=count-1; i >= 0; i--) {
+        
+    for (int i = 0; i < count; i++) {
 
         CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
-        CFRange range = CTLineGetStringRange(line);
-        NSRange _range = NSMakeRange(range.location == kCFNotFound ? NSNotFound : range.location, range.length == kCFNotFound ? 0 : range.length);
-
-        BOOL contains = (index - _range.location <= _range.length);         
+        CFRange cfRange = CTLineGetStringRange(line);
+        NSRange range = NSMakeRange(range.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
                 
-        if (contains) {
-        
-            if ([_attributedString.string characterAtIndex:index-1] == '\n' && _range.location!=index) {
-                index = MAX(0, index-1);
+        if (index >= range.location && index <= range.location+range.length) {
+
+            CGFloat ascent, descent, xPos;
+            xPos = CTLineGetOffsetForStringIndex((CTLineRef)[lines objectAtIndex:i], index, NULL); 
+            CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
+            CGPoint origin = origins[i];
+
+            if (_selectedRange.length>0 && index != _selectedRange.location && range.length == 1) {
+                
+                xPos = _textContentView.bounds.size.width - 3.0f; // selection of entire line
+                
+            } else if ([_attributedString.string characterAtIndex:index-1] == '\n' && range.length == 1) {
+               
+                xPos = 0.0f; // empty line
+
             }
             
-            CGFloat xPos;                
-            xPos = CTLineGetOffsetForStringIndex((CTLineRef)[lines objectAtIndex:i], index, NULL);                
-            
-            CGFloat ascent, descent;
-            CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
-            
-            CGPoint origin = origins[i];
-            returnRect = CGRectMake(xPos,  floorf(origin.y - descent), 3, MAX(floorf(ascent + descent), self.font.lineHeight));
-           
-            break;
-        }
+            returnRect = CGRectMake(xPos,  floorf(origin.y - descent), 3, ceilf((descent*2) + ascent));
+
+        } 
+        
     }
     
     free(origins);
@@ -678,6 +724,7 @@ typedef enum {
 }
 
 - (CGRect)firstRectForNSRange:(NSRange)range {
+    
     NSInteger index = range.location;
     
     NSArray *lines = (NSArray *) CTFrameGetLines(_frame);
@@ -701,7 +748,7 @@ typedef enum {
             CGFloat ascent, descent;
             CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
             
-            returnRect = [_textContentView convertRect:CGRectMake(xStart, origin.y - descent, xEnd - xStart, ascent + descent) toView:self];
+            returnRect = [_textContentView convertRect:CGRectMake(xStart, origin.y - descent, xEnd - xStart, ascent + (descent*2)) toView:self];
             break;
         }
     }
@@ -715,14 +762,15 @@ typedef enum {
 #pragma mark Text Selection
 
 - (void)selectionChanged {
-    
-    if (!self.editing) {
+   
+    if (!_editing) {
         [_caretView removeFromSuperview];
-        return;
     }
     
+    _ignoreSelectionMenu = NO;
+    
     if (self.selectedRange.length == 0) {
-
+    
         if (_selectionView!=nil) {
             [_selectionView removeFromSuperview];
             _selectionView=nil;
@@ -746,23 +794,24 @@ typedef enum {
         
     } else {
         
-        _longPress.minimumPressDuration = 0.1f;
+        _longPress.minimumPressDuration = 0.0f;
+        
+        if ((_caretView!=nil) && _caretView.superview) {
+            [_caretView removeFromSuperview];
+        }
         
         if (_selectionView==nil) {
+            
             EGOSelectionView *view = [[EGOSelectionView alloc] initWithFrame:_textContentView.bounds];
             [_textContentView addSubview:view];
             _selectionView=view;
-            [view release];            
-        }
-        
-        if (_caretView.superview) {
-            [_caretView removeFromSuperview];
+            [view release];  
+            
         }
         
         CGRect begin = [self caretRectForIndex:_selectedRange.location];
         CGRect end = [self caretRectForIndex:_selectedRange.location+_selectedRange.length];
         [_selectionView setBeginCaret:begin endCaret:end];
-
         [_textContentView setNeedsDisplay];
         
     }    
@@ -770,6 +819,7 @@ typedef enum {
     if (self.markedRange.location != NSNotFound) {
         [_textContentView setNeedsDisplay];
     }
+    
 }
 
 - (NSRange)markedRange {
@@ -786,7 +836,7 @@ typedef enum {
 }
 
 - (void)setSelectedRange:(NSRange)range {
-    _selectedRange = range;
+    _selectedRange = NSMakeRange(range.location == NSNotFound ? NSNotFound : MAX(0, range.location), range.length);
     [self selectionChanged];
 }
 
@@ -805,54 +855,8 @@ typedef enum {
         }
         
         [self removeCorrectionAttributesForRange:_correctionRange];
-        UIMenuController *menuController = [UIMenuController sharedMenuController];
-        NSString *string = [_attributedString.string substringWithRange:range];
-        NSString *theLanguage = [[UITextChecker availableLanguages] objectAtIndex:0];
-        if (!theLanguage)
-            theLanguage = @"en_US";
-        NSArray *guesses = [_textChecker guessesForWordRange:range inString:string language:theLanguage];
-        
-        if (guesses!=nil && [guesses count]>0) {
-            
-            NSMutableArray *items = [[NSMutableArray alloc] init];
-            
-            if (self.menuItemActions==nil) {
-                self.menuItemActions = [NSMutableDictionary dictionary];
-            }
-            
-            for (NSString *word in guesses){
-                
-                NSString *selString = [NSString stringWithFormat:@"spellCheckMenu_%i:", [word hash]];
-                SEL sel = sel_registerName([selString UTF8String]);
-                
-                [self.menuItemActions setObject:word forKey:NSStringFromSelector(sel)]; 
-                class_addMethod([self class], sel, [[self class] instanceMethodForSelector:@selector(spellingCorrection:)], "v@:@");
-                
-                UIMenuItem *item = [[UIMenuItem alloc] initWithTitle:word action:sel];
-                [items addObject:item];
-                [item release];
-                if ([items count]>=4) {
-                    break;
-                }
-            }
-            
-            [menuController setMenuItems:items];  
-            [items release];
-            
-            [menuController setTargetRect:[self firstRectForNSRange:_correctionRange] inView:self];
-            [menuController setMenuVisible:YES animated:YES];
-            
-            
-        } else {
-            
-            UIMenuItem *item = [[UIMenuItem alloc] initWithTitle:@"No Replacements Found" action:@selector(spellCheckMenuEmpty:)];
-            [menuController setMenuItems:[NSArray arrayWithObject:item]];
-            [item release];
-            
-            [menuController setTargetRect:[self firstRectForNSRange:_correctionRange] inView:self];
-            [menuController setMenuVisible:YES animated:YES];
-            
-        }
+        [self showCorrectionMenuForRange:_correctionRange];
+
         
     } else {
         
@@ -867,9 +871,10 @@ typedef enum {
     
 }
 
-- (void)setEditing:(BOOL)editing {
-    _editing = editing;
-    [self selectionChanged];
+- (void)releaseEditingVars {
+    
+    
+    
 }
 
 - (void)setEditable:(BOOL)editable {
@@ -896,9 +901,15 @@ typedef enum {
         }
         
         self.correctionAttributes=nil;
-        [_textChecker release], _textChecker=nil;
-        [_tokenizer release], _tokenizer=nil;
-        [_mutableAttributedString release], _mutableAttributedString=nil;
+        if (_textChecker!=nil) {
+            [_textChecker release], _textChecker=nil;
+        }
+        if (_tokenizer!=nil) {
+            [_tokenizer release], _tokenizer=nil;
+        }
+        if (_mutableAttributedString!=nil) {
+            [_mutableAttributedString release], _mutableAttributedString=nil;
+        }
         
     }
     _editable = editable;
@@ -916,7 +927,7 @@ typedef enum {
 + (UIColor*)caretColor {
     static UIColor *color = nil;
     if (color == nil) {
-        color = [[UIColor colorWithRed:0.25 green:0.50 blue:1.0 alpha:1.0] retain];
+        color = [[UIColor colorWithRed:0.259f green:0.420f blue:0.949f alpha:1.0f] retain];
     }
     return color;
 }
@@ -974,6 +985,7 @@ typedef enum {
 }
 
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange {
+        
     NSRange selectedNSRange = self.selectedRange;
     NSRange markedTextRange = self.markedRange;
     
@@ -1198,8 +1210,21 @@ typedef enum {
 #pragma mark UITextInput - Styling Information
 
 - (NSDictionary*)textStylingAtPosition:(UITextPosition *)position inDirection:(UITextStorageDirection)direction {
-    // This sample assumes all text is single-styled, so this is easy.
-    return [NSDictionary dictionaryWithObject:self.font forKey:UITextInputTextFontKey];
+
+    IndexedPosition *pos = (IndexedPosition*)position;
+    NSInteger index = MAX(pos.index, 0);
+    index = MIN(index, _attributedString.length-1);
+    
+    NSDictionary *attribs = [self.attributedString attributesAtIndex:index effectiveRange:nil];
+    NSMutableDictionary *dictionary = [NSMutableDictionary dictionaryWithCapacity:1];
+    
+    CTFontRef ctFont = (CTFontRef)[attribs valueForKey:(NSString*)kCTFontAttributeName];
+    UIFont *font = [UIFont fontWithName:(NSString*)CTFontCopyFamilyName(ctFont) size:CTFontGetSize(ctFont)];
+    
+    [dictionary setObject:font forKey:UITextInputTextFontKey];
+    
+    return dictionary;
+
 }
 
 
@@ -1214,6 +1239,8 @@ typedef enum {
     
     NSRange selectedNSRange = self.selectedRange;
     NSRange markedTextRange = self.markedRange;
+    
+    [_mutableAttributedString setAttributedString:self.attributedString];
     
     NSAttributedString *newString = [[NSAttributedString alloc] initWithString:text attributes:self.defaultAttributes];
     
@@ -1249,19 +1276,22 @@ typedef enum {
     self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
     self.selectedRange = selectedNSRange;  
-    
+        
     if (text.length > 1 || ([text isEqualToString:@" "] || [text isEqualToString:@"\n"])) {
-        [self checkSpelling];
+        [self checkSpellingForRange:[self characterRangeAtIndex:self.selectedRange.location-1]];
     }
-
+  
 }
 
 - (void)deleteBackward  {
     
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showCorrectionMenuWithoutSelection) object:nil];
+    
     NSRange selectedNSRange = self.selectedRange;
     NSRange markedTextRange = self.markedRange;
     
-    
+    [_mutableAttributedString setAttributedString:self.attributedString];
+
     if (_correctionRange.location != NSNotFound && _correctionRange.length > 0) {
         
         [_mutableAttributedString beginEditing];
@@ -1269,7 +1299,7 @@ typedef enum {
         [_mutableAttributedString endEditing];
         self.correctionRange = NSMakeRange(NSNotFound, 0);
         selectedNSRange.length = 0;
-
+        
     } else if (markedTextRange.location != NSNotFound) {
         
         [_mutableAttributedString beginEditing];
@@ -1289,6 +1319,12 @@ typedef enum {
         selectedNSRange.length = 0;
         
     } else if (selectedNSRange.location > 0) {
+        
+        NSInteger index = MAX(0, selectedNSRange.location-1);
+        index = MIN(_attributedString.length-1, index);
+        if ([_attributedString.string characterAtIndex:index] == ' ') {
+            [self performSelector:@selector(showCorrectionMenuWithoutSelection) withObject:nil afterDelay:0.2f];
+        }
         
         selectedNSRange.location--;
         selectedNSRange.length = 1;
@@ -1314,7 +1350,7 @@ typedef enum {
 - (void)insertCorrectionAttributesForRange:(NSRange)range {
     
     NSMutableAttributedString *string = [_attributedString mutableCopy];
-    [string removeAttribute:(NSString*)kCTUnderlineStyleAttributeName range:range];
+    [string addAttributes:self.correctionAttributes range:range];
     self.attributedString = string;
     [string release];
     
@@ -1323,7 +1359,7 @@ typedef enum {
 - (void)removeCorrectionAttributesForRange:(NSRange)range {
     
     NSMutableAttributedString *string = [_attributedString mutableCopy];
-    [string addAttributes:self.correctionAttributes range:range];
+    [string removeAttribute:(NSString*)kCTUnderlineStyleAttributeName range:range];
     self.attributedString = string;
     [string release];
     
@@ -1331,44 +1367,31 @@ typedef enum {
 
 - (void)checkSpellingForRange:(NSRange)range {
     
-   range = [_textChecker rangeOfMisspelledWordInString:_attributedString.string range:NSMakeRange(0, _attributedString.length) startingAt:0 wrap:YES language:@"en_US"];
-    
-    if (range.location!=NSNotFound && range.length > 1) {
+    [_mutableAttributedString setAttributedString:self.attributedString];
         
-        NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:[NSNumber numberWithInt:(int)(kCTUnderlineStyleThick|kCTUnderlinePatternDot)], kCTUnderlineStyleAttributeName, (id)[UIColor colorWithRed:1.0f green:0.0f blue:0.0f alpha:1.0f].CGColor, kCTUnderlineColorAttributeName, nil];
-        [_mutableAttributedString addAttributes:dictionary range:range];
-        self.attributedString = _attributedString;
-        [dictionary release];
-        
-    }
-    
-    
-}
-
-- (void)checkSpelling {
-    
-    NSInteger currentOffset = 0;
-    NSRange currentRange = NSMakeRange(0, 0);
-    NSString *theText = _attributedString.string;
-    NSRange stringRange = NSMakeRange(0, theText.length-1);
+    NSInteger location = range.location-1;
+    NSInteger currentOffset = MAX(0, location);
+    NSRange currentRange;
+    NSString *string = self.attributedString.string;
+    NSRange stringRange = NSMakeRange(0, string.length-1);
     NSArray *guesses;
     BOOL done = NO;
     
-    NSString *theLanguage = [[UITextChecker availableLanguages] objectAtIndex:0];
-    if (!theLanguage)
-        theLanguage = @"en_US";
+    NSString *language = [[UITextChecker availableLanguages] objectAtIndex:0];
+    if (!language) {
+        language = @"en_US";
+    }
     
     while (!done) {
         
-        currentRange = [_textChecker rangeOfMisspelledWordInString:theText range:stringRange
-                                                       startingAt:currentOffset wrap:NO language:theLanguage];
-        if (currentRange.location == NSNotFound) {
+        currentRange = [_textChecker rangeOfMisspelledWordInString:string range:stringRange startingAt:currentOffset wrap:NO language:language];
+        
+        if (currentRange.location == NSNotFound || currentRange.location > range.location) {
             done = YES;
             continue;
         }
-        guesses = [_textChecker guessesForWordRange:currentRange inString:theText
-                                          language:theLanguage];
-        
+
+        guesses = [_textChecker guessesForWordRange:currentRange inString:string language:language];
         
         if (guesses!=nil) {           
             [_mutableAttributedString addAttributes:self.correctionAttributes range:currentRange];
@@ -1381,7 +1404,6 @@ typedef enum {
     if (![self.attributedString isEqualToAttributedString:_mutableAttributedString]) {
         self.attributedString = _mutableAttributedString;
     }
-
     
 }
 
@@ -1389,10 +1411,44 @@ typedef enum {
 #pragma mark -
 #pragma mark Gestures 
 
-- (void)longPress:(UILongPressGestureRecognizer*)gesture {
+- (EGOTextWindow*)egoTextWindow {
     
+    if (_textWindow==nil) {
+        
+        EGOTextWindow *window = nil;
+        
+        for (EGOTextWindow *aWindow in [[UIApplication sharedApplication] windows]){
+            if ([aWindow isKindOfClass:[EGOTextWindow class]]) {
+                window = aWindow;
+                window.frame = [[UIScreen mainScreen] bounds];
+                break;
+            }
+        }
+        
+        if (window==nil) {
+            window = [[EGOTextWindow alloc] initWithFrame:self.window.frame];
+        }
+        
+        window.windowLevel = UIWindowLevelStatusBar;
+        window.hidden = NO;
+        _textWindow=window;
+        
+    }
+    
+    return _textWindow;
+    
+}
+
+- (void)longPress:(UILongPressGestureRecognizer*)gesture {
+
     if (gesture.state==UIGestureRecognizerStateBegan || gesture.state == UIGestureRecognizerStateChanged) {
     
+        UIMenuController *menuController = [UIMenuController sharedMenuController];
+        if ([menuController isMenuVisible]) {
+            [menuController setMenuVisible:NO animated:NO];
+        }
+        
+        CGPoint point = [gesture locationInView:self];
         BOOL _selection = (_selectionView!=nil);
 
         if (!_selection && _caretView!=nil) {
@@ -1400,13 +1456,12 @@ typedef enum {
         }
         
         if (_textWindow==nil) {
-            
+        
             EGOTextWindow *window = nil;
             
             for (EGOTextWindow *aWindow in [[UIApplication sharedApplication] windows]){
                 if ([aWindow isKindOfClass:[EGOTextWindow class]]) {
                     window = aWindow;
-                    window.hidden=NO;
                     window.frame = [[UIScreen mainScreen] bounds];
                     break;
                 }
@@ -1414,85 +1469,74 @@ typedef enum {
             
             if (window==nil) {
                 window = [[EGOTextWindow alloc] initWithFrame:self.window.frame];
-                window.windowLevel = UIWindowLevelStatusBar;
-                [window makeKeyAndVisible];
             }
             
+            window.windowLevel = UIWindowLevelStatusBar;
+            window.hidden = NO;
             _textWindow=window;
             [_textWindow setType:_selection ? EGOWindowMagnify : EGOWindowLoupe];
+            
         }
            
-        CGPoint point = [gesture locationInView:self];
         point.y -= 20.0f;
         NSInteger index = [self closestIndexToPoint:point];
         
-        if (index!=kCFNotFound) {
-            if (_selection) {
+        if (_selection) {
+            
+            if (gesture.state == UIGestureRecognizerStateBegan) {
+                _textWindow.selectionType = (index > (_selectedRange.location+(_selectedRange.length/2))) ? EGOSelectionTypeRight : EGOSelectionTypeLeft;
+            }
+            
+            CGRect rect = CGRectZero;
+            if (_textWindow.selectionType==EGOSelectionTypeLeft) {
                 
-                if (gesture.state == UIGestureRecognizerStateBegan) {
-                    BOOL left = NO;
-                    if (index < _selectedRange.location) {
-                        left = YES;
-                    } else if (index > _selectedRange.location+_selectedRange.length) {
-                        left = NO;
-                    } else {
-                        
-                        NSInteger leftDiff =  index - _selectedRange.location;
-                        NSInteger rightDiff = (_selectedRange.location+_selectedRange.length)-index;
-                        
-                        left = (leftDiff < rightDiff);
-                        
-                    }
-                    
-                    _textWindow.selectionType = left ? EGOSelectionTypeLeft : EGOSelectionTypeRight;
-                }
-               
-                CGRect rect = CGRectZero;
-                if (_textWindow.selectionType==EGOSelectionTypeLeft) {
-                  
-                    NSInteger begin = MAX(0, index);
-                    begin = MIN(_selectedRange.location+_selectedRange.length-1, begin);
-
-                    NSInteger end = _selectedRange.location + _selectedRange.length;
-                    end = MIN(_attributedString.string.length, end-begin);
-                    
-                    self.selectedRange = NSMakeRange(begin, end);
-                    rect = [self caretRectForIndex:(self.selectedRange.location)];
+                NSInteger begin = MAX(0, index);
+                begin = MIN(_selectedRange.location+_selectedRange.length-1, begin);
                 
-                } else {
-                    
-                    NSInteger length = MIN(index-_selectedRange.location, _attributedString.string.length-_selectedRange.location);
-                    length = MAX(1, length);
-                    
-                    self.selectedRange = NSMakeRange(self.selectedRange.location, length);
-                    rect = [self caretRectForIndex:(self.selectedRange.location+length)];
-                    
-                }
+                NSInteger end = _selectedRange.location + _selectedRange.length;
+                end = MIN(_attributedString.string.length, end-begin);
                 
-                if (gesture.state == UIGestureRecognizerStateBegan) {
-                    [_textWindow showFromView:_textContentView rect:[_textContentView convertRect:rect toView:_textWindow]];
-                } else {
-                    [_textWindow renderWithContentView:_textContentView fromRect:rect];
-                }
+                self.selectedRange = NSMakeRange(begin, end);
+                index = _selectedRange.location;
                 
             } else {
                 
-                CGPoint location = [gesture locationInView:_textWindow];
-                CGRect rect = CGRectMake(location.x, location.y, _caretView.bounds.size.width, _caretView.bounds.size.height);
-                
-                self.selectedRange = NSMakeRange(index, 0);
-
-                if (gesture.state == UIGestureRecognizerStateBegan) {
-                
-                    [_textWindow showFromView:_textContentView rect:rect];
-               
-                } else {
-                    
-                    [_textWindow renderWithContentView:_textContentView fromRect:rect];
-                
-                }
+                NSInteger length = MIN(index-_selectedRange.location, _attributedString.string.length-_selectedRange.location);
+                length = MAX(1, length);                    
+                self.selectedRange = NSMakeRange(self.selectedRange.location, length);
+                index = (_selectedRange.location+_selectedRange.length); 
                 
             }
+            
+            rect = [self caretRectForIndex:index];
+            
+            if (gesture.state == UIGestureRecognizerStateBegan) {
+                
+                [_textWindow showFromView:_textContentView rect:[_textContentView convertRect:rect toView:_textWindow]];
+                
+            } else {
+                
+                [_textWindow renderWithContentView:_textContentView fromRect:[_textContentView convertRect:rect toView:_textWindow]];
+                
+            }
+            
+        } else {
+            
+            CGPoint location = [gesture locationInView:_textWindow];
+            CGRect rect = CGRectMake(location.x, location.y, _caretView.bounds.size.width, _caretView.bounds.size.height);
+            
+            self.selectedRange = NSMakeRange(index, 0);
+            
+            if (gesture.state == UIGestureRecognizerStateBegan) {
+                
+                [_textWindow showFromView:_textContentView rect:rect];
+                
+            } else {
+                
+                [_textWindow renderWithContentView:_textContentView fromRect:rect];
+                
+            }
+            
         }
         
     } else {
@@ -1506,124 +1550,103 @@ typedef enum {
             _textWindow=nil;
         }
         
-        if (self.selectedRange.length>0) {
-            
-            UIMenuController *controller = [UIMenuController sharedMenuController];
-            [controller setTargetRect:_caretView.frame inView:_textContentView];
-            [controller update];
-            [controller setMenuVisible:YES animated:YES];
-            
+        if (gesture.state == UIGestureRecognizerStateEnded) {
+            if (self.selectedRange.location!=NSNotFound && self.selectedRange.length>0) {
+                [self showMenu];
+            }
         }
-        
     }
     
 }
 
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer{
 
-#pragma mark -
-#pragma mark Touches
-
-
-- (void)showMenu {
+    if ([gestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPanGestureRecognizer")]) {
+        UIMenuController *menuController = [UIMenuController sharedMenuController];
+        if ([menuController isMenuVisible]) {
+            [menuController setMenuVisible:NO animated:NO];
+        }
+    }
     
-    UIMenuController *menuController = [UIMenuController sharedMenuController];
-    [menuController setMenuItems:nil];
-    [menuController setTargetRect:_caretView.frame inView:self];
-    [menuController update];
-    [menuController setMenuVisible:YES animated:YES];
-
+    return NO;
+    
 }
 
-- (void)showCorrectionMenu {
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer{
     
-    if (_editing) {
-
-        NSRange range = [self characterRangeAtIndex:self.selectedRange.location];
-        NSLog(@"char at index : %i %i", range.location, range.length);
-        if (range.location!=NSNotFound && range.length>0) {
-            
-            NSString *language = [[UITextChecker availableLanguages] objectAtIndex:0];
-            if (!language)
-                language = @"en_US";
-            self.correctionRange = [_textChecker rangeOfMisspelledWordInString:_attributedString.string range:range startingAt:0 wrap:YES language:language];
-            
+    if (gestureRecognizer==_longPress) {
+        
+        if (_selectedRange.length>0 && _selectionView!=nil) {            
+            return CGRectContainsPoint(CGRectInset([_textContentView convertRect:_selectionView.frame toView:self], -20.0f, -20.0f) , [gestureRecognizer locationInView:self]);
         }
         
     }
     
+    return YES;
+    
 }
 
-- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
-    [super touchesBegan:touches withEvent:event];
+- (void)doubleTap:(UITapGestureRecognizer*)gesture {
+    
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showMenu) object:nil];
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showCorrectionMenu) object:nil];
+
+    NSInteger index = [self closestWhiteSpaceIndexToPoint:[gesture locationInView:self]];
+    NSRange range = [self characterRangeAtIndex:index];
+    if (range.location!=NSNotFound && range.length>0) {
+        
+        [self.inputDelegate selectionWillChange:self];
+        self.selectedRange = range;
+        [self.inputDelegate selectionDidChange:self];
+
+        if (![[UIMenuController sharedMenuController] isMenuVisible]) {
+            [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.1f];
+        }
+    } 
+    
 }
 
-- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
-    [super touchesMoved:touches withEvent:event];
-}
-
-- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
-    [super touchesEnded:touches withEvent:event];
-
+- (void)tap:(UITapGestureRecognizer*)gesture {
+    
     if ([self isEditable] && ![self isFirstResponder]) {
         [self becomeFirstResponder];  
         return;
     }
     
-    UIMenuController *menuController = [UIMenuController sharedMenuController];
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showMenu) object:nil];
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showCorrectionMenu) object:nil];
     
     self.correctionRange = NSMakeRange(NSNotFound, 0);
     if (self.selectedRange.length>0) {
         self.selectedRange = NSMakeRange(_selectedRange.location, 0);
     }
     
+    NSInteger index = [self closestWhiteSpaceIndexToPoint:[gesture locationInView:self]];
+
+    UIMenuController *menuController = [UIMenuController sharedMenuController];
     if ([menuController isMenuVisible]) {
+
         [menuController setMenuVisible:NO animated:NO];
-        return;
-    }
-    
-    UITouch *touch = [touches anyObject];
-    
-    if (([touch tapCount] == 2)) {
-                      
-        NSRange range = [self characterRangeAtPoint_:[touch locationInView:_textContentView]];
-        if (range.location!=NSNotFound && range.length>0) {
-            
-            self.selectedRange = range;
-
-            if (![menuController isMenuVisible]) {
-                [menuController setMenuItems:nil];
-                [menuController setTargetRect:[self firstRectForNSRange:self.selectedRange] inView:self];
-                [menuController update];
-                [menuController setMenuVisible:YES animated:YES];
-            }
-            
-        } 
-
-    } else if ([touch tapCount] == 1) {
-            
-        [self.inputDelegate selectionWillChange:self];
         
-        NSInteger index = [self closestWhiteSpaceIndexToPoint:[touch locationInView:self]];
+    } else {
+        
         if (index==self.selectedRange.location) {
-            [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.3f];
+            [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.35f];
         } else {
-            [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.3f];
+            if (_editing) {
+                [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.35f];
+            }
         }
-        if (index!=kCFNotFound) {
-            self.markedRange = NSMakeRange(NSNotFound, 0);
-            self.selectedRange = NSMakeRange(index, 0);
-        }
-        [self.inputDelegate selectionDidChange:self];          
-
-     
+        
     }
     
-}
-
-- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event {
-    [super touchesCancelled:touches withEvent:event];
+    [self.inputDelegate selectionWillChange:self];
+    
+    self.markedRange = NSMakeRange(NSNotFound, 0);
+    self.selectedRange = NSMakeRange(index, 0);
+    
+    [self.inputDelegate selectionDidChange:self];
+    
 }
 
 
@@ -1632,8 +1655,8 @@ typedef enum {
 
 - (BOOL)canBecomeFirstResponder {
 
-    if ([self isEditable] && ([self.delegate respondsToSelector:@selector(textViewShouldBeginEditing:)])) {
-        return [self.delegate textViewShouldBeginEditing:self];
+    if (_editable && ([self.delegate respondsToSelector:@selector(egoTextViewShouldBeginEditing:)])) {
+        return [self.delegate egoTextViewShouldBeginEditing:self];
     }
     
     return YES;
@@ -1641,31 +1664,183 @@ typedef enum {
 
 - (BOOL)becomeFirstResponder {
 
-    if (([self.delegate respondsToSelector:@selector(textViewDidBeginEditing:)])) {
-        [self.delegate textViewDidBeginEditing:self];
+    if (_editable) {
+        
+        if (([self.delegate respondsToSelector:@selector(egoTextViewDidBeginEditing:)])) {
+            [self.delegate egoTextViewDidBeginEditing:self];
+        }
+        
+        _editing = YES;
+        [self selectionChanged];
     }
 
-    self.editing = YES;
     return [super becomeFirstResponder];
 }
 
 - (BOOL)canResignFirstResponder {
     
-    if (([self.delegate respondsToSelector:@selector(textViewShouldEndEditing:)])) {
-        return [self.delegate textViewShouldEndEditing:self];
+    if (_editable && ([self.delegate respondsToSelector:@selector(egoTextViewShouldEndEditing:)])) {
+        return [self.delegate egoTextViewShouldEndEditing:self];
     }
     
     return YES;
 }
 
 - (BOOL)resignFirstResponder {
+
+    if (_editable) {
+        
+        if (([self.delegate respondsToSelector:@selector(egoTextViewDidEndEditing:)])) {
+            [self.delegate egoTextViewDidEndEditing:self];
+        }
+        
+        _editing = NO;	
+        [self selectionChanged];
+        
+    }
+
+	return [super resignFirstResponder];
     
-    if (([self.delegate respondsToSelector:@selector(textViewDidEndEditing:)])) {
-        [self.delegate textViewDidEndEditing:self];
+}
+
+
+#pragma mark -
+#pragma mark Menu Presentation
+
+- (CGRect)menuPresentationRect {
+    
+    CGRect rect = [_textContentView convertRect:_caretView.frame toView:self];
+    
+    if (_selectedRange.location != NSNotFound && _selectedRange.length > 0) {
+        
+        if (_selectionView!=nil) {
+            rect = [_textContentView convertRect:_selectionView.frame toView:self];
+        } else {
+            rect = [self firstRectForNSRange:_selectedRange];
+        }
+        
+    } else if (_editing && _correctionRange.location != NSNotFound && _correctionRange.length > 0) {
+        
+        rect = [self firstRectForNSRange:_correctionRange];
+        
+    } 
+    
+    return rect;
+    
+}
+
+- (void)showMenu {
+    
+    UIMenuController *menuController = [UIMenuController sharedMenuController];
+    
+    if ([menuController isMenuVisible]) {
+        [menuController setMenuVisible:NO animated:NO]; 
     }
     
-    self.editing = NO;	
-	return [super resignFirstResponder];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [menuController setMenuItems:nil];
+        [menuController setTargetRect:[self menuPresentationRect] inView:self];
+        [menuController update];
+        [menuController setMenuVisible:YES animated:YES]; 
+    });
+    
+    
+    
+}
+
+- (void)showCorrectionMenu {
+    
+    if (_editing) {
+        
+        NSRange range = [self characterRangeAtIndex:self.selectedRange.location];
+        if (range.location!=NSNotFound && range.length>1 && range.location >= 0) {
+            
+            NSString *language = [[UITextChecker availableLanguages] objectAtIndex:0];
+            if (!language)
+                language = @"en_US";
+            self.correctionRange = [_textChecker rangeOfMisspelledWordInString:_attributedString.string range:range startingAt:0 wrap:YES language:language];
+            
+        }
+    }
+    
+}
+
+- (void)showCorrectionMenuWithoutSelection {
+    
+    if (_editing) {
+        
+        NSRange range = [self characterRangeAtIndex:self.selectedRange.location];
+        [self showCorrectionMenuForRange:range];
+        
+    } else {
+        
+        [self showMenu];
+        
+    }
+    
+}
+
+- (void)showCorrectionMenuForRange:(NSRange)range {
+    
+    if (range.location==NSNotFound || range.length==0) return;
+    
+    range.location = MAX(0, range.location);
+    range.length = MIN(_attributedString.string.length, range.length);
+    
+    [self removeCorrectionAttributesForRange:range];
+    
+    UIMenuController *menuController = [UIMenuController sharedMenuController];
+    
+    if ([menuController isMenuVisible]) return;
+    _ignoreSelectionMenu = YES;
+    
+    NSString *language = [[UITextChecker availableLanguages] objectAtIndex:0];
+    if (!language) {
+        language = @"en_US";
+    }    
+    
+    NSArray *guesses = [_textChecker guessesForWordRange:range inString:_attributedString.string language:language];
+    
+    [menuController setTargetRect:[self menuPresentationRect] inView:self];
+    
+    if (guesses!=nil && [guesses count]>0) {
+        
+        NSMutableArray *items = [[NSMutableArray alloc] init];
+        
+        if (self.menuItemActions==nil) {
+            self.menuItemActions = [NSMutableDictionary dictionary];
+        }
+        
+        for (NSString *word in guesses){
+            
+            NSString *selString = [NSString stringWithFormat:@"spellCheckMenu_%i:", [word hash]];
+            SEL sel = sel_registerName([selString UTF8String]);
+            
+            [self.menuItemActions setObject:word forKey:NSStringFromSelector(sel)]; 
+            class_addMethod([self class], sel, [[self class] instanceMethodForSelector:@selector(spellingCorrection:)], "v@:@");
+            
+            UIMenuItem *item = [[UIMenuItem alloc] initWithTitle:word action:sel];
+            [items addObject:item];
+            [item release];
+            if ([items count]>=4) {
+                break;
+            }
+        }
+        
+        [menuController setMenuItems:items];  
+        [items release];
+        
+        
+        
+    } else {
+        
+        UIMenuItem *item = [[UIMenuItem alloc] initWithTitle:@"No Replacements Found" action:@selector(spellCheckMenuEmpty:)];
+        [menuController setMenuItems:[NSArray arrayWithObject:item]];
+        [item release];        
+        
+    }
+    
+    [menuController setMenuVisible:YES animated:YES];
     
 }
 
@@ -1675,16 +1850,14 @@ typedef enum {
 
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender {
     
-    if (self.correctionRange.length>0) {
-        
+    if (self.correctionRange.length>0 || _ignoreSelectionMenu) {
         if ([NSStringFromSelector(action) hasPrefix:@"spellCheckMenu"]) {
             return YES;
         }
-        
         return NO;
     }
-    
-    if ((action==@selector(cut:)) || (action==@selector(delete:))) {
+
+    if ((action==@selector(cut:))) {
         return (_selectedRange.length>0 && _editing);
     } else if (action==@selector(copy:)) {
         return ((_selectedRange.length>0));
@@ -1692,6 +1865,8 @@ typedef enum {
         return (_selectedRange.length==0 && [self hasText]);
     } else if (action == @selector(paste:)) {
         return (_editing && [[UIPasteboard generalPasteboard] containsPasteboardTypes:[NSArray arrayWithObject:@"public.utf8-plain-text"]]);
+    } else if (action == @selector(delete:)) {
+        return NO;
     }
 
     return [super canPerformAction:action withSender:sender];
@@ -1700,11 +1875,24 @@ typedef enum {
 
 - (void)spellingCorrection:(UIMenuController*)sender {
     
-    [self replaceRange:[IndexedRange rangeWithNSRange:self.correctionRange] withText:[self.menuItemActions objectForKey:NSStringFromSelector(_cmd)]];
+    NSRange replacementRange = _correctionRange;
+    
+    if (replacementRange.location==NSNotFound || replacementRange.length==0) {
+        replacementRange = [self characterRangeAtIndex:self.selectedRange.location];
+    }
+    if (replacementRange.location!=NSNotFound && replacementRange.length!=0) {
+        NSString *text = [self.menuItemActions objectForKey:NSStringFromSelector(_cmd)];
+        [self.inputDelegate textWillChange:self];       
+        [self replaceRange:[IndexedRange rangeWithNSRange:replacementRange] withText:text];
+        [self.inputDelegate textDidChange:self];       
+        replacementRange.length = text.length;
+        [self removeCorrectionAttributesForRange:replacementRange];
+    }
+    
     self.correctionRange = NSMakeRange(NSNotFound, 0);
     self.menuItemActions = nil;
     [sender setMenuItems:nil];
-    
+
 }
 
 - (void)spellCheckMenuEmpty:(id)sender{
@@ -1718,35 +1906,18 @@ typedef enum {
     NSString *pasteText = [[UIPasteboard generalPasteboard] valueForPasteboardType:@"public.utf8-plain-text"];
     
     if (pasteText!=nil) {
-        
-        NSMutableAttributedString *string = [self.attributedString mutableCopy];
-        NSAttributedString *newString = [[NSAttributedString alloc] initWithString:pasteText attributes:self.defaultAttributes];
-        [string insertAttributedString:newString atIndex:_selectedRange.location];
-        [self setAttributedString:string];
-        
-        NSRange range = NSMakeRange(_selectedRange.location+[newString length], 0);
-        self.selectedRange = range;
-        
-        [newString release];
-        [string release];
-
+        [self insertText:pasteText];
     }
     
 }
 
 - (void)menuDidHide:(NSNotification*)notification {
     
-    if (_selectionView) {
-        UIMenuController *controller = [UIMenuController sharedMenuController];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [controller update];
-            [controller setTargetRect:_selectionView.frame inView:self];
-            [controller setMenuVisible:YES animated:YES];
-        });
-    }
-
     [[NSNotificationCenter defaultCenter] removeObserver:self name:UIMenuControllerDidHideMenuNotification object:nil];
     
+    if (_selectionView) {
+        [self showMenu];
+    }
 }
 
 - (void)selectAll:(id)sender {
@@ -1773,10 +1944,12 @@ typedef enum {
     NSString *string = [_attributedString.string substringWithRange:_selectedRange];
     [[UIPasteboard generalPasteboard] setValue:string forPasteboardType:@"public.utf8-plain-text"];
     
-    NSMutableAttributedString *mutableString = [self.attributedString mutableCopy];
-    [mutableString deleteCharactersInRange:_selectedRange];
-    [self setAttributedString:mutableString];
-    [mutableString release];
+    [_mutableAttributedString setAttributedString:self.attributedString];
+    [_mutableAttributedString deleteCharactersInRange:_selectedRange];
+    
+    [self.inputDelegate textWillChange:self];       
+    [self setAttributedString:_mutableAttributedString];
+    [self.inputDelegate textDidChange:self];       
     
     self.selectedRange = NSMakeRange(_selectedRange.location, 0);
     
@@ -1790,11 +1963,12 @@ typedef enum {
 }
 
 - (void)delete:(id)sender {
-    
-    NSMutableAttributedString *string = [self.attributedString mutableCopy];
-    [string deleteCharactersInRange:_selectedRange];
-    [self setAttributedString:string];
-    [string release];
+        
+    [_mutableAttributedString setAttributedString:self.attributedString];
+    [_mutableAttributedString deleteCharactersInRange:_selectedRange];
+    [self.inputDelegate textWillChange:self];       
+    [self setAttributedString:_mutableAttributedString];
+    [self.inputDelegate textDidChange:self];   
     
     self.selectedRange = NSMakeRange(_selectedRange.location, 0);
     
@@ -1812,13 +1986,12 @@ typedef enum {
 - (void)dealloc {
 
     _textWindow=nil;
-    self.font = nil;
+    [_font release], _font=nil;
+    [_attributedString release], _attributedString=nil;
+    [_caretView release], _caretView=nil;
     self.menuItemActions=nil;
     self.defaultAttributes=nil;
     self.correctionAttributes=nil;
-    self.attributedString=nil;
-    self.text=nil;
-    [_caretView release];
     [super dealloc];
 }
 
@@ -1905,8 +2078,8 @@ typedef enum {
 
 @implementation EGOCaretView
 
-static const NSTimeInterval kInitialBlinkDelay = 0.7;
-static const NSTimeInterval kBlinkRate = 0.5;
+static const NSTimeInterval kInitialBlinkDelay = 0.6f;
+static const NSTimeInterval kBlinkRate = 1.0;
 
 - (id)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
@@ -1915,38 +2088,38 @@ static const NSTimeInterval kBlinkRate = 0.5;
     return self;
 }
 
-- (void)blink {
-    self.hidden = !self.hidden;
-}
-
 - (void)show {
     
-    self.hidden = NO;
-    [_blinkTimer setFireDate:[NSDate distantFuture]];
-
+    [self.layer removeAllAnimations];
+    
 }
 
 - (void)didMoveToSuperview {
-    self.hidden = NO;
 
     if (self.superview) {
-        _blinkTimer = [[NSTimer scheduledTimerWithTimeInterval:kBlinkRate target:self selector:@selector(blink) userInfo:nil repeats:YES] retain];
+        
         [self delayBlink];
+        
     } else {
-        [_blinkTimer invalidate];
-        [_blinkTimer release];
-        _blinkTimer = nil;        
+        
+        [self.layer removeAllAnimations];
+        
     }
 }
 
 - (void)delayBlink {
-    self.hidden = NO;
-    [_blinkTimer setFireDate:[NSDate dateWithTimeIntervalSinceNow:kInitialBlinkDelay]];
+    
+    CAKeyframeAnimation *animation = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+    animation.values = [NSArray arrayWithObjects:[NSNumber numberWithFloat:1.0f], [NSNumber numberWithFloat:1.0f], [NSNumber numberWithFloat:0.0f], [NSNumber numberWithFloat:0.0f], nil];
+    animation.calculationMode = kCAAnimationCubic;
+    animation.duration = kBlinkRate;
+    animation.beginTime = CACurrentMediaTime() + kInitialBlinkDelay;
+    animation.repeatCount = 1e50f;
+    [self.layer addAnimation:animation forKey:@"BlinkAnimation"];
+    
 }
 
 - (void)dealloc {
-    [_blinkTimer invalidate];
-    [_blinkTimer release];
     [super dealloc];
 }
 
@@ -2078,7 +2251,6 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
                 [self renderWithContentView:view fromRect:rect];
             });
             
-            
         }];
         
     }
@@ -2103,6 +2275,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
             _showing=NO;
             [_view removeFromSuperview];
             _view=nil;
+            self.windowLevel = UIWindowLevelNormal;
             self.hidden = YES;
 
         }];
@@ -2121,9 +2294,9 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     CGFloat magnifyScale = 1.0f; 
     
     if (scale) {
-        CGFloat max = 24.0f;
-        magnifyScale = max/offsetRect.size.height;
-        NSLog(@"max %f scale %f", max, magnifyScale);
+        //CGFloat max = 24.0f;
+       // magnifyScale = max/offsetRect.size.height;
+       // NSLog(@"max %f scale %f", max, magnifyScale);
     } else if (rect.size.height < 22.0f) {
         //magnifyScale = 22.0f/offsetRect.size.height;
         //NSLog(@"cale %f", magnifyScale);
@@ -2134,44 +2307,59 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
 
     CGContextSetFillColorWithColor(ctx, [UIColor colorWithRed:1.0f green:1.0f blue:1.0f alpha:1.0f].CGColor);
     UIRectFill(CGContextGetClipBoundingBox(ctx));
-    
+
     CGContextSaveGState(ctx);
     CGContextTranslateCTM(ctx, 0, view.bounds.size.height);
     CGContextScaleCTM(ctx, 1.0, -1.0);
     
-    CGContextConcatCTM(ctx, CGAffineTransformMakeScale(magnifyScale, magnifyScale));
+//    CGContextConcatCTM(ctx, CGAffineTransformMakeScale(magnifyScale, magnifyScale));
     CGContextConcatCTM(ctx, CGAffineTransformMakeTranslation(-(offsetRect.origin.x), offsetRect.origin.y));
-
-    [view.layer renderInContext:ctx];
-  
-    CGContextRestoreGState(ctx);
     
-    CGContextConcatCTM(ctx, CGAffineTransformMakeScale(magnifyScale, magnifyScale));
-    CGContextConcatCTM(ctx, CGAffineTransformMakeTranslation(-rect.origin.x*magnifyScale, rect.origin.y*magnifyScale));
-    for (CALayer *layer in view.layer.sublayers){
-        [layer renderInContext:ctx];
+    UIView *selectionView = nil;
+    CGRect selectionFrame = CGRectZero;
+    
+    for (UIView *subview in view.subviews){
+        if ([subview isKindOfClass:[EGOSelectionView class]]) {
+            selectionView = subview;
+        }
     }
     
+    if (selectionView!=nil) {
+        selectionFrame = selectionView.frame;
+        CGRect newFrame = selectionFrame;
+        newFrame.origin.y = (selectionFrame.size.height - view.bounds.size.height) - ((selectionFrame.origin.y + selectionFrame.size.height) - view.bounds.size.height);
+        selectionView.frame = newFrame;
+    }
+    
+    [view.layer renderInContext:ctx];
+    
+    if (selectionView!=nil) {
+        selectionView.frame = selectionFrame;
+    }
+    
+    
+    CGContextRestoreGState(ctx);
     UIImage *aImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-    
+
     return aImage;
     
 }
 
 - (void)renderWithContentView:(UIView*)view fromRect:(CGRect)rect {
-
+    
     CGPoint pos = CGPointMake(CGRectGetMinX(rect), CGRectGetMinY(rect));
     
     if (_showing && _view!=nil) {
         
         CGRect frame = _view.frame;
         frame.origin.x = floorf((pos.x - (_view.bounds.size.width/2)) + (rect.size.width/2));
+        frame.origin.y = floorf(pos.y - _view.bounds.size.height);
 
         if (_type==EGOWindowMagnify) {
-            frame.origin.y = MAX(frame.origin.y, 0.0f);
+            frame.origin.y = MAX(0.0f, frame.origin.y);
+            rect = [self convertRect:rect toView:view];
         } else {
-            frame.origin.y = floorf(pos.y - _view.bounds.size.height);
             frame.origin.y = MAX(frame.origin.y-10.0f, -40.0f);
             rect = [self convertRect:rect toView:view];
         }
@@ -2250,6 +2438,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
         self.backgroundColor = [UIColor clearColor]; 
         self.userInteractionEnabled = NO;
         self.layer.geometryFlipped = YES;
+        
     }
     return self;
 }
@@ -2258,7 +2447,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     
     if(!self.superview) return;
     
-    self.frame = CGRectMake(self.frame.origin.x, begin.origin.y, end.origin.x - begin.origin.x, CGRectGetMaxY(end)-begin.origin.y);   
+    self.frame = CGRectMake(begin.origin.x, begin.origin.y + begin.size.height, end.origin.x - begin.origin.x, (end.origin.y-end.size.height)-begin.origin.y);   
     begin = [self.superview convertRect:begin toView:self];
     end = [self.superview convertRect:end toView:self];
     

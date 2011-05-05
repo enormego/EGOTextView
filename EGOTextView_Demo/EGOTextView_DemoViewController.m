@@ -36,11 +36,24 @@
     self.egoTextView = view;
     [view release];
     
+    
+    
+    CTFontRef font = CTFontCreateWithName((CFStringRef)@"Cochin-BoldItalic", 20, NULL);        
+    UIColor *textColor = [UIColor blueColor];    
+    NSDictionary *defaultStyle = [NSDictionary dictionaryWithObjectsAndKeys:(NSString*)font, kCTFontAttributeName, (id)textColor.CGColor, kCTForegroundColorAttributeName, nil];
+    CFRelease(font);
+    
+    NSMutableAttributedString *mutableAttribString = [[NSMutableAttributedString alloc] initWithString:@"EGOTextView" attributes:defaultStyle];
+    [self.egoTextView setAttributedString:mutableAttribString];
+    [mutableAttribString release];
+    
     UITextView *textView = [[UITextView alloc] initWithFrame:CGRectMake(0.0f, 0.0f, self.view.bounds.size.width, self.view.bounds.size.height-216.0f)];
     textView.font = self.egoTextView.font;
     [self.view addSubview:textView];
     self.textView = textView;
-    [view release];
+    [textView release];
+    
+    //self.textView.text = self.egoTextView.text;
     
     [segment setSelectedSegmentIndex:1];
 
@@ -76,60 +89,21 @@
 #pragma mark -
 #pragma mark EGOTextViewDelegate
 
-- (BOOL)textViewShouldBeginEditing:(EGOTextView *)textView {
-    NSLog(@"should begin");
+- (BOOL)egoTextViewShouldBeginEditing:(EGOTextView *)textView {
     return YES;
 }
 
-- (BOOL)textViewShouldEndEditing:(EGOTextView *)textView {
-    NSLog(@"should end");
+- (BOOL)egoTextViewShouldEndEditing:(EGOTextView *)textView {
     return YES;
 }
 
-- (void)textViewDidBeginEditing:(EGOTextView *)textView {
-    NSLog(@"did begin");
+- (void)egoTextViewDidBeginEditing:(EGOTextView *)textView {
 }
 
-- (void)textViewDidEndEditing:(EGOTextView *)textView {
-    NSLog(@"did end");
+- (void)egoTextViewDidEndEditing:(EGOTextView *)textView {
 }
 
-- (void)textViewDidChange:(EGOTextView *)textView {
-
-    return;
-    NSMutableAttributedString *mutableAttribString = [[NSMutableAttributedString alloc] initWithAttributedString:textView.attributedString];
-    
-    CTFontRef font = CTFontCreateWithName((CFStringRef)textView.font.fontName, textView.font.pointSize, NULL);    
-    CTFontRef boldFont = CTFontCreateCopyWithSymbolicTraits(font, 0.0, NULL, kCTFontBoldTrait, kCTFontBoldTrait);
-    
-    UIColor *textColor = [UIColor blackColor];
-    
-    NSMutableDictionary *boldStyle = [[NSMutableDictionary alloc] initWithObjectsAndKeys:(NSString*)boldFont, kCTFontAttributeName, (id)textColor.CGColor, kCTForegroundColorAttributeName, nil];
-    NSDictionary *defaultStyle = [NSDictionary dictionaryWithObjectsAndKeys:(NSString*)font, kCTFontAttributeName, (id)textColor.CGColor, kCTForegroundColorAttributeName, nil];
-    
-    [mutableAttribString setAttributes:defaultStyle range:NSMakeRange(0, mutableAttribString.string.length)];
-    
-    CFRelease(font);
-    CFRelease(boldFont);
-    
-    if (([mutableAttribString.string rangeOfString:@"fringe"].location!=NSNotFound)) {
-        textColor = [UIColor colorWithRed:0.757f green:0.000f blue:0.000f alpha:1.0f];
-        [boldStyle setObject:(id)textColor.CGColor forKey:(NSString*)kCTForegroundColorAttributeName];
-        [mutableAttribString setAttributes:boldStyle range:[mutableAttribString.string rangeOfString:@"fringe"]];
-    }
-    
-    if (([mutableAttribString.string rangeOfString:@"test"].location!=NSNotFound)) {
-        textColor = [UIColor colorWithRed:0.0f green:0.000f blue:0.757f alpha:1.0f];
-        [boldStyle setObject:(id)textColor.CGColor forKey:(NSString*)kCTForegroundColorAttributeName];
-        [mutableAttribString setAttributes:boldStyle range:[mutableAttribString.string rangeOfString:@"test"]];
-    }
-    
-    [boldStyle release];
-    
-    if (![textView.attributedString isEqualToAttributedString:mutableAttribString]) {
-        textView.attributedString = mutableAttribString;
-    }
-    [mutableAttribString release];
+- (void)egoTextViewDidChange:(EGOTextView *)textView {
 
 }
 
