@@ -28,33 +28,26 @@
     self.navigationItem.titleView = segment;
     [segment release];
     
-    self.view.backgroundColor = [UIColor grayColor];
-
-    EGOTextView *view = [[EGOTextView alloc] initWithFrame:CGRectMake(0.0f, 0.0f, self.view.bounds.size.width, self.view.bounds.size.height-216.0f)];
-    view.delegate = (id<EGOTextViewDelegate>)self;
-    [self.view addSubview:view];
-    self.egoTextView = view;
-    [view release];
-    
-    
-    
-    CTFontRef font = CTFontCreateWithName((CFStringRef)@"Cochin-BoldItalic", 20, NULL);        
-    UIColor *textColor = [UIColor blueColor];    
-    NSDictionary *defaultStyle = [NSDictionary dictionaryWithObjectsAndKeys:(NSString*)font, kCTFontAttributeName, (id)textColor.CGColor, kCTForegroundColorAttributeName, nil];
-    CFRelease(font);
-    
-    NSMutableAttributedString *mutableAttribString = [[NSMutableAttributedString alloc] initWithString:@"EGOTextView" attributes:defaultStyle];
-    [self.egoTextView setAttributedString:mutableAttribString];
-    [mutableAttribString release];
-    
-    UITextView *textView = [[UITextView alloc] initWithFrame:CGRectMake(0.0f, 0.0f, self.view.bounds.size.width, self.view.bounds.size.height-216.0f)];
-    textView.font = self.egoTextView.font;
-    [self.view addSubview:textView];
-    self.textView = textView;
-    [textView release];
-    
-    //self.textView.text = self.egoTextView.text;
-    
+    if (_egoTextView==nil) {
+        
+        EGOTextView *view = [[EGOTextView alloc] initWithFrame:CGRectMake(0.0f, 0.0f, self.view.bounds.size.width, self.view.bounds.size.height-216.0f)];
+        view.delegate = (id<EGOTextViewDelegate>)self;
+        [self.view addSubview:view];
+        self.egoTextView = view;
+        [view release];  
+        
+    }
+     
+    if (_textView==nil) {
+        
+        UITextView *textView = [[UITextView alloc] initWithFrame:CGRectMake(0.0f, 0.0f, self.view.bounds.size.width, self.view.bounds.size.height-216.0f)];
+        textView.font = self.egoTextView.font;
+        [self.view addSubview:textView];
+        self.textView = textView;
+        [textView release];
+        
+    }
+        
     [segment setSelectedSegmentIndex:1];
 
 }
@@ -105,6 +98,12 @@
 
 - (void)egoTextViewDidChange:(EGOTextView *)textView {
 
+}
+
+- (void)egoTextView:(EGOTextView*)textView didSelectURL:(NSURL *)URL {
+    
+    NSLog(@"SELECTED URL");
+    
 }
 
 

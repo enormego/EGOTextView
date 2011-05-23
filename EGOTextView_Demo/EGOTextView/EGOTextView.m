@@ -26,7 +26,6 @@
 #import "EGOTextView.h"
 #import <UIKit/UITextChecker.h>
 #import <QuartzCore/QuartzCore.h>
-#include <objc/runtime.h>
 
 typedef enum {
     EGOWindowLoupe = 0,
@@ -38,7 +37,7 @@ typedef enum {
     EGOSelectionTypeRight,
 } EGOSelectionType;
 
-#pragma mark EGOContentView definition
+// MARK: EGOContentView definition
 
 @interface EGOContentView : UIView {
 @private
@@ -47,7 +46,7 @@ typedef enum {
 @property(nonatomic,assign) id delegate;
 @end
 
-#pragma mark EGOCaretView definition
+// MARK: EGOCaretView definition
 
 @interface EGOCaretView : UIView {
     NSTimer *_blinkTimer;
@@ -58,7 +57,7 @@ typedef enum {
 @end
 
 
-#pragma mark EGOLoupeView definition
+// MARK: EGOLoupeView definition
 
 @interface EGOLoupeView : UIView {
 @private
@@ -68,7 +67,7 @@ typedef enum {
 @end
 
 
-#pragma mark MagnifyView definition
+// MARK: MagnifyView definition
 
 @interface EGOMagnifyView : UIView {
 @private
@@ -78,7 +77,7 @@ typedef enum {
 @end
 
 
-#pragma mark EGOTextWindow definition
+// MARK: EGOTextWindow definition
 
 @interface EGOTextWindow : UIWindow {
 @private
@@ -98,7 +97,7 @@ typedef enum {
 @end
 
 
-#pragma mark EGOSelectionView definition
+// MARK: EGOSelectionView definition
 
 @interface EGOSelectionView : UIView {
 @private
@@ -110,29 +109,29 @@ typedef enum {
 - (void)setBeginCaret:(CGRect)begin endCaret:(CGRect)rect;
 @end
 
-#pragma mark UITextPosition  definition
+// MARK: UITextPosition  definition
 
-@interface IndexedPosition : UITextPosition {
+@interface EGOIndexedPosition : UITextPosition {
     NSUInteger               _index;
     id <UITextInputDelegate> _inputDelegate;
 }
 
 @property (nonatomic) NSUInteger index;
-+ (IndexedPosition *)positionWithIndex:(NSUInteger)index;
++ (EGOIndexedPosition *)positionWithIndex:(NSUInteger)index;
 
 @end
 
-#pragma mark UITextRange definition
+// MARK: UITextRange definition
 
-@interface IndexedRange : UITextRange {
+@interface EGOIndexedRange : UITextRange {
     NSRange _range;
 }
 
 @property (nonatomic) NSRange range;
-+ (IndexedRange *)rangeWithNSRange:(NSRange)range;
++ (EGOIndexedRange *)rangeWithNSRange:(NSRange)range;
 @end
 
-#pragma mark EGOTextView private
+// MARK: EGOTextView private
 
 @interface EGOTextView (Private)
 
@@ -141,8 +140,16 @@ typedef enum {
     id <UITextInputDelegate>           _inputDelegate;
     UITextInputStringTokenizer         *_tokenizer;
     UITextChecker                      *_textChecker;
-    BOOL                                _ignoreSelectionMenu;
     UILongPressGestureRecognizer       *_longPress;
+
+    BOOL _ignoreSelectionMenu;
+    BOOL _delegateRespondsToShouldBeginEditing;
+    BOOL _delegateRespondsToShouldEndEditing;
+    BOOL _delegateRespondsToDidBeginEditing;
+    BOOL _delegateRespondsToDidEndEditing;
+    BOOL _delegateRespondsToDidChange;
+    BOOL _delegateRespondsToDidChangeSelection;
+    BOOL _delegateRespondsToDidSelectURL;
 
 
 @property(nonatomic) UITextAutocapitalizationType autocapitalizationType;
@@ -161,6 +168,7 @@ typedef enum {
 - (void)removeCorrectionAttributesForRange:(NSRange)range;
 - (void)insertCorrectionAttributesForRange:(NSRange)range;
 - (void)showCorrectionMenuForRange:(NSRange)range;
+- (void)checkLinksForRange:(NSRange)range;
 - (void)showMenu;
 - (CGRect)menuPresentationRect;
 
@@ -241,6 +249,18 @@ typedef enum {
     return self;
 }
 
+- (void)dealloc {
+    
+    _textWindow=nil;
+    [_font release], _font=nil;
+    [_attributedString release], _attributedString=nil;
+    [_caretView release], _caretView=nil;
+    self.menuItemActions=nil;
+    self.defaultAttributes=nil;
+    self.correctionAttributes=nil;
+    [super dealloc];
+}
+
 - (void)clearPreviousLayoutInformation {
         
     if (_framesetter != NULL) {
@@ -252,22 +272,6 @@ typedef enum {
         CFRelease(_frame);
         _frame = NULL;
     }
-}
-
-- (void)setFont:(UIFont *)font {
-   
-    UIFont *oldFont = _font;
-    _font = [font retain];
-    [oldFont release];
-
-    CTFontRef ctFont = CTFontCreateWithName((CFStringRef) self.font.fontName, self.font.pointSize, NULL);  
-    NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:(id)ctFont, (NSString *)kCTFontAttributeName, (id)[UIColor blackColor].CGColor, kCTForegroundColorAttributeName, nil];
-    self.defaultAttributes = dictionary;
-    [dictionary release];
-    CFRelease(ctFont);        
-    
-    [self textChanged];
-    
 }
 
 - (CGFloat)boundingWidthForHeight:(CGFloat)height {
@@ -318,6 +322,22 @@ typedef enum {
     return _attributedString.string;
 }
 
+- (void)setFont:(UIFont *)font {
+    
+    UIFont *oldFont = _font;
+    _font = [font retain];
+    [oldFont release];
+    
+    CTFontRef ctFont = CTFontCreateWithName((CFStringRef) self.font.fontName, self.font.pointSize, NULL);  
+    NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:(id)ctFont, (NSString *)kCTFontAttributeName, (id)[UIColor blackColor].CGColor, kCTForegroundColorAttributeName, nil];
+    self.defaultAttributes = dictionary;
+    [dictionary release];
+    CFRelease(ctFont);        
+    
+    [self textChanged];
+    
+}
+
 - (void)setText:(NSString *)text {
     
     [self.inputDelegate textWillChange:self];       
@@ -338,15 +358,72 @@ typedef enum {
     
     [self textChanged];
 
-    if (([self.delegate respondsToSelector:@selector(egoTextViewDidChange:)])) {
+    if (_delegateRespondsToDidChange) {
         [self.delegate egoTextViewDidChange:self];
     }
+        
+}
+
+- (void)setDelegate:(id<EGOTextViewDelegate>)aDelegate {
+    [super setDelegate:(id<UIScrollViewDelegate>)aDelegate];
+    
+    delegate = aDelegate;
+    
+    _delegateRespondsToShouldBeginEditing = [delegate respondsToSelector:@selector(egoTextViewShouldBeginEditing:)];
+    _delegateRespondsToShouldEndEditing = [delegate respondsToSelector:@selector(egoTextViewShouldEndEditing:)];
+    _delegateRespondsToDidBeginEditing = [delegate respondsToSelector:@selector(egoTextViewDidBeginEditing:)];
+    _delegateRespondsToDidEndEditing = [delegate respondsToSelector:@selector(egoTextViewDidEndEditing:)];
+    _delegateRespondsToDidChange = [delegate respondsToSelector:@selector(egoTextViewDidChange:)];
+    _delegateRespondsToDidChangeSelection = [delegate respondsToSelector:@selector(egoTextViewDidChangeSelection:)];
+    _delegateRespondsToDidSelectURL = [delegate respondsToSelector:@selector(egoTextView:didSelectURL:)];
+    
+}
+
+- (void)setEditable:(BOOL)editable {
+    
+    if (editable) {
+        
+        if (_caretView==nil) {
+            _caretView = [[EGOCaretView alloc] initWithFrame:CGRectZero];
+        }
+        
+        _tokenizer = [[UITextInputStringTokenizer alloc] initWithTextInput:self];
+        _textChecker = [[UITextChecker alloc] init];
+        _mutableAttributedString = [[NSMutableAttributedString alloc] init];
+        
+        NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:[NSNumber numberWithInt:(int)(kCTUnderlineStyleThick|kCTUnderlinePatternDot)], kCTUnderlineStyleAttributeName, (id)[UIColor colorWithRed:1.0f green:0.0f blue:0.0f alpha:1.0f].CGColor, kCTUnderlineColorAttributeName, nil];
+        self.correctionAttributes = dictionary;
+        [dictionary release];
+        
+    } else {
+        
+        if (_caretView) {
+            [_caretView removeFromSuperview];
+            [_caretView release], _caretView=nil;
+        }
+        
+        self.correctionAttributes=nil;
+        if (_textChecker!=nil) {
+            [_textChecker release], _textChecker=nil;
+        }
+        if (_tokenizer!=nil) {
+            [_tokenizer release], _tokenizer=nil;
+        }
+        if (_mutableAttributedString!=nil) {
+            [_mutableAttributedString release], _mutableAttributedString=nil;
+        }
+        
+    }
+    _editable = editable;
     
 }
 
 
-#pragma mark -
-#pragma mark Layout Methods
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: Layout methods
+/////////////////////////////////////////////////////////////////////////////
+
 
 - (NSRange)rangeIntersection:(NSRange)first withSecond:(NSRange)second {
 
@@ -367,7 +444,7 @@ typedef enum {
     return result;    
 }
 
-- (void)drawPathFromRects:(NSArray*)array {
+- (void)drawPathFromRects:(NSArray*)array cornerRadius:(CGFloat)cornerRadius {
     
     if (array==nil || [array count] == 0) return;
     
@@ -378,8 +455,14 @@ typedef enum {
     if ([array count]>1) {
         lastRect.size.width = _textContentView.bounds.size.width-lastRect.origin.x;
     }
-    CGPathAddRect(_path, NULL, firstRect);
-    CGPathAddRect(_path, NULL, lastRect);
+    
+    if (cornerRadius>0) {
+        CGPathAddPath(_path, NULL, [UIBezierPath bezierPathWithRoundedRect:firstRect cornerRadius:cornerRadius].CGPath);
+        CGPathAddPath(_path, NULL, [UIBezierPath bezierPathWithRoundedRect:lastRect cornerRadius:cornerRadius].CGPath);
+    } else {
+        CGPathAddRect(_path, NULL, firstRect);
+        CGPathAddRect(_path, NULL, lastRect);
+    }
     
     if ([array count] > 1) {
                 
@@ -391,7 +474,12 @@ typedef enum {
         CGFloat height =  MAX(0.0f, lastRect.origin.y-originY);
         
         fillRect = CGRectMake(originX, originY, width, height);
-        CGPathAddRect(_path, NULL, fillRect);
+        
+        if (cornerRadius>0) {
+            CGPathAddPath(_path, NULL, [UIBezierPath bezierPathWithRoundedRect:fillRect cornerRadius:cornerRadius].CGPath);
+        } else {
+            CGPathAddRect(_path, NULL, fillRect);
+        }
 
     }
     
@@ -402,7 +490,7 @@ typedef enum {
 
 }
 
-- (void)drawBoundingRangeAsSelection:(NSRange)selectionRange {
+- (void)drawBoundingRangeAsSelection:(NSRange)selectionRange cornerRadius:(CGFloat)cornerRadius {
 	
     if (selectionRange.length == 0 || selectionRange.location == NSNotFound) {
         return;
@@ -441,7 +529,7 @@ typedef enum {
         } 
     }  
     
-    [self drawPathFromRects:pathRects];
+    [self drawPathFromRects:pathRects cornerRadius:cornerRadius];
     [pathRects release];
     free(origins);
 
@@ -449,10 +537,12 @@ typedef enum {
 
 - (void)drawContentInRect:(CGRect)rect {    
 
+    [[UIColor colorWithRed:0.8f green:0.8f blue:0.8f alpha:1.0f] setFill];
+    [self drawBoundingRangeAsSelection:_linkRange cornerRadius:2.0f];
     [[EGOTextView selectionColor] setFill];
-    [self drawBoundingRangeAsSelection:self.selectedRange];
+    [self drawBoundingRangeAsSelection:self.selectedRange cornerRadius:0.0f];
     [[EGOTextView spellingSelectionColor] setFill];
-    [self drawBoundingRangeAsSelection:self.correctionRange];
+    [self drawBoundingRangeAsSelection:self.correctionRange cornerRadius:2.0f];
         
 	CGPathRef framePath = CTFrameGetPath(_frame);
 	CGRect frameRect = CGPathGetBoundingBox(framePath);
@@ -629,7 +719,7 @@ typedef enum {
         CFRange cfRange = CTLineGetStringRange(line);
         NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length == kCFNotFound ? 0 : cfRange.length);
         
-        if (NSLocationInRange(MAX(0, index-1), range)) {
+        if (index >= range.location && index <= range.location+range.length) {
             
             if (range.length > 1) {
                 
@@ -644,7 +734,6 @@ typedef enum {
                 
             }
 
-            break;
         }
     }
     
@@ -758,8 +847,10 @@ typedef enum {
 }
 
 
-#pragma mark -
-#pragma mark Text Selection
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: Text Selection
+/////////////////////////////////////////////////////////////////////////////
 
 - (void)selectionChanged {
    
@@ -826,13 +917,13 @@ typedef enum {
     return _markedRange;
 }
 
+- (NSRange)selectedRange {
+    return _selectedRange;
+}
+
 - (void)setMarkedRange:(NSRange)range {    
     _markedRange = range;
     //[self selectionChanged];
-}
-
-- (NSRange)selectedRange {
-    return _selectedRange;
 }
 
 - (void)setSelectedRange:(NSRange)range {
@@ -871,48 +962,39 @@ typedef enum {
     
 }
 
-- (void)releaseEditingVars {
+- (void)setLinkRange:(NSRange)range {
     
+    _linkRange = range;
     
-    
-}
-
-- (void)setEditable:(BOOL)editable {
-    
-    if (editable) {
+    if (_linkRange.length>0) {
         
-        if (_caretView==nil) {
-            _caretView = [[EGOCaretView alloc] initWithFrame:CGRectZero];
+        if (_caretView.superview!=nil) {
+            [_caretView removeFromSuperview];
         }
-        
-        _tokenizer = [[UITextInputStringTokenizer alloc] initWithTextInput:self];
-        _textChecker = [[UITextChecker alloc] init];
-        _mutableAttributedString = [[NSMutableAttributedString alloc] init];
-
-         NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:[NSNumber numberWithInt:(int)(kCTUnderlineStyleThick|kCTUnderlinePatternDot)], kCTUnderlineStyleAttributeName, (id)[UIColor colorWithRed:1.0f green:0.0f blue:0.0f alpha:1.0f].CGColor, kCTUnderlineColorAttributeName, nil];
-        self.correctionAttributes = dictionary;
-        [dictionary release];
         
     } else {
         
-        if (_caretView) {
-            [_caretView removeFromSuperview];
-            [_caretView release], _caretView=nil;
-        }
-        
-        self.correctionAttributes=nil;
-        if (_textChecker!=nil) {
-            [_textChecker release], _textChecker=nil;
-        }
-        if (_tokenizer!=nil) {
-            [_tokenizer release], _tokenizer=nil;
-        }
-        if (_mutableAttributedString!=nil) {
-            [_mutableAttributedString release], _mutableAttributedString=nil;
+        if (_caretView.superview==nil) {
+            if (!_caretView.superview) {
+                [_textContentView addSubview:_caretView];
+                _caretView.frame = [self caretRectForIndex:self.selectedRange.location];
+                [_caretView delayBlink];
+            }
         }
         
     }
-    _editable = editable;
+    
+    [_textContentView setNeedsDisplay];
+
+}
+
+- (void)setLinkRangeFromTextCheckerResults:(NSTextCheckingResult*)results {
+        
+    [self setLinkRange:[results range]];
+    
+    UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:[[results URL] absoluteString] delegate:(id<UIActionSheetDelegate>)self cancelButtonTitle:@"Cancel" destructiveButtonTitle:nil otherButtonTitles:@"Open", nil];
+    [actionSheet showInView:self];
+    [actionSheet release];
     
 }
 
@@ -941,19 +1023,22 @@ typedef enum {
 }
 
 
-#pragma mark -
-#pragma mark UITextInput methods
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: UITextInput methods
+/////////////////////////////////////////////////////////////////////////////
 
-#pragma mark UITextInput - Replacing and Returning Text
+
+// MARK: UITextInput - Replacing and Returning Text
 
 - (NSString *)textInRange:(UITextRange *)range {
-    IndexedRange *r = (IndexedRange *)range;
+    EGOIndexedRange *r = (EGOIndexedRange *)range;
     return ([_attributedString.string substringWithRange:r.range]);
 }
 
 - (void)replaceRange:(UITextRange *)range withText:(NSString *)text {
     
-    IndexedRange *r = (IndexedRange *)range;
+    EGOIndexedRange *r = (EGOIndexedRange *)range;
 
     NSRange selectedNSRange = self.selectedRange;
     if ((r.range.location + r.range.length) <= selectedNSRange.location) {
@@ -968,20 +1053,19 @@ typedef enum {
     
 }
 
-
-#pragma mark UITextInput - Working with Marked and Selected Text
+// MARK: UITextInput - Working with Marked and Selected Text
 
 - (UITextRange *)selectedTextRange {
-    return [IndexedRange rangeWithNSRange:self.selectedRange];
+    return [EGOIndexedRange rangeWithNSRange:self.selectedRange];
 }
 
 - (void)setSelectedTextRange:(UITextRange *)range {
-    IndexedRange *r = (IndexedRange *)range;
+    EGOIndexedRange *r = (EGOIndexedRange *)range;
     self.selectedRange = r.range;
 }
 
 - (UITextRange *)markedTextRange {
-    return [IndexedRange rangeWithNSRange:self.markedRange];    
+    return [EGOIndexedRange rangeWithNSRange:self.markedRange];    
 }
 
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange {
@@ -1032,40 +1116,39 @@ typedef enum {
     
 }
 
-
-#pragma mark UITextInput - Computing Text Ranges and Text Positions
+// MARK: UITextInput - Computing Text Ranges and Text Positions
 
 - (UITextPosition*)beginningOfDocument {
-    return [IndexedPosition positionWithIndex:0];
+    return [EGOIndexedPosition positionWithIndex:0];
 }
 
 - (UITextPosition*)endOfDocument {
-    return [IndexedPosition positionWithIndex:_attributedString.length];
+    return [EGOIndexedPosition positionWithIndex:_attributedString.length];
 }
 
 - (UITextRange*)textRangeFromPosition:(UITextPosition *)fromPosition toPosition:(UITextPosition *)toPosition {
 
-    IndexedPosition *from = (IndexedPosition *)fromPosition;
-    IndexedPosition *to = (IndexedPosition *)toPosition;    
+    EGOIndexedPosition *from = (EGOIndexedPosition *)fromPosition;
+    EGOIndexedPosition *to = (EGOIndexedPosition *)toPosition;    
     NSRange range = NSMakeRange(MIN(from.index, to.index), ABS(to.index - from.index));
-    return [IndexedRange rangeWithNSRange:range];    
+    return [EGOIndexedRange rangeWithNSRange:range];    
     
 }
 
 - (UITextPosition*)positionFromPosition:(UITextPosition *)position offset:(NSInteger)offset {
 
-    IndexedPosition *pos = (IndexedPosition *)position;    
+    EGOIndexedPosition *pos = (EGOIndexedPosition *)position;    
     NSInteger end = pos.index + offset;
 	
     if (end > _attributedString.length || end < 0)
         return nil;
     
-    return [IndexedPosition positionWithIndex:end];
+    return [EGOIndexedPosition positionWithIndex:end];
 }
 
 - (UITextPosition*)positionFromPosition:(UITextPosition *)position inDirection:(UITextLayoutDirection)direction offset:(NSInteger)offset {
 
-    IndexedPosition *pos = (IndexedPosition *)position;
+    EGOIndexedPosition *pos = (EGOIndexedPosition *)position;
     NSInteger newPos = pos.index;
     
     switch (direction) {
@@ -1086,15 +1169,14 @@ typedef enum {
     if (newPos > _attributedString.length)
         newPos = _attributedString.length;
     
-    return [IndexedPosition positionWithIndex:newPos];
+    return [EGOIndexedPosition positionWithIndex:newPos];
 }
 
-
-#pragma mark UITextInput - Evaluating Text Positions
+// MARK: UITextInput - Evaluating Text Positions
 
 - (NSComparisonResult)comparePosition:(UITextPosition *)position toPosition:(UITextPosition *)other {
-    IndexedPosition *pos = (IndexedPosition *)position;
-    IndexedPosition *o = (IndexedPosition *)other;
+    EGOIndexedPosition *pos = (EGOIndexedPosition *)position;
+    EGOIndexedPosition *o = (EGOIndexedPosition *)other;
     
     if (pos.index == o.index) {
         return NSOrderedSame;
@@ -1106,24 +1188,23 @@ typedef enum {
 }
 
 - (NSInteger)offsetFromPosition:(UITextPosition *)from toPosition:(UITextPosition *)toPosition {
-    IndexedPosition *f = (IndexedPosition *)from;
-    IndexedPosition *t = (IndexedPosition *)toPosition;
+    EGOIndexedPosition *f = (EGOIndexedPosition *)from;
+    EGOIndexedPosition *t = (EGOIndexedPosition *)toPosition;
     return (t.index - f.index);
 }
 
-
-#pragma mark UITextInput - Text Input Delegate and Text Input Tokenizer
+// MARK: UITextInput - Text Input Delegate and Text Input Tokenizer
 
 - (id <UITextInputTokenizer>)tokenizer {
     return _tokenizer;
 }
 
 
-#pragma mark UITextInput - Text Layout, writing direction and position
+// MARK: UITextInput - Text Layout, writing direction and position
 
 - (UITextPosition *)positionWithinRange:(UITextRange *)range farthestInDirection:(UITextLayoutDirection)direction {
 
-    IndexedRange *r = (IndexedRange *)range;
+    EGOIndexedRange *r = (EGOIndexedRange *)range;
     NSInteger pos = r.range.location;
     
     switch (direction) {
@@ -1137,12 +1218,12 @@ typedef enum {
             break;
     }
     
-    return [IndexedPosition positionWithIndex:pos];        
+    return [EGOIndexedPosition positionWithIndex:pos];        
 }
 
 - (UITextRange *)characterRangeByExtendingPosition:(UITextPosition *)position inDirection:(UITextLayoutDirection)direction {
 
-    IndexedPosition *pos = (IndexedPosition *)position;
+    EGOIndexedPosition *pos = (EGOIndexedPosition *)position;
     NSRange result = NSMakeRange(pos.index, 1);
     
     switch (direction) {
@@ -1156,7 +1237,7 @@ typedef enum {
             break;
     }
     
-    return [IndexedRange rangeWithNSRange:result];   
+    return [EGOIndexedRange rangeWithNSRange:result];   
 }
 
 - (UITextWritingDirection)baseWritingDirectionForPosition:(UITextPosition *)position inDirection:(UITextStorageDirection)direction {
@@ -1167,51 +1248,48 @@ typedef enum {
     // only ltr supported for now.
 }
 
-
-#pragma mark UITextInput - Geometry
+// MARK: UITextInput - Geometry
 
 - (CGRect)firstRectForRange:(UITextRange *)range {
     
-    IndexedRange *r = (IndexedRange *)range;    
+    EGOIndexedRange *r = (EGOIndexedRange *)range;    
     return [self firstRectForNSRange:r.range];   
 }
 
 - (CGRect)caretRectForPosition:(UITextPosition *)position {
     
-    IndexedPosition *pos = (IndexedPosition *)position;
+    EGOIndexedPosition *pos = (EGOIndexedPosition *)position;
 	return [self caretRectForIndex:pos.index];    
 }
 
-
-#pragma mark UITextInput - Hit testing
+// MARK: UITextInput - Hit testing
 
 - (UITextPosition*)closestPositionToPoint:(CGPoint)point {
     
-    IndexedPosition *position = [IndexedPosition positionWithIndex:[self closestIndexToPoint:point]];
+    EGOIndexedPosition *position = [EGOIndexedPosition positionWithIndex:[self closestIndexToPoint:point]];
     return position;
     
 }
 
 - (UITextPosition*)closestPositionToPoint:(CGPoint)point withinRange:(UITextRange *)range {
 	
-    IndexedPosition *position = [IndexedPosition positionWithIndex:[self closestIndexToPoint:point]];
+    EGOIndexedPosition *position = [EGOIndexedPosition positionWithIndex:[self closestIndexToPoint:point]];
     return position;
     
 }
 
 - (UITextRange*)characterRangeAtPoint:(CGPoint)point {
 	
-    IndexedRange *range = [IndexedRange rangeWithNSRange:[self characterRangeAtPoint_:point]];
+    EGOIndexedRange *range = [EGOIndexedRange rangeWithNSRange:[self characterRangeAtPoint_:point]];
     return range;
     
 }
 
-
-#pragma mark UITextInput - Styling Information
+// MARK: UITextInput - Styling Information
 
 - (NSDictionary*)textStylingAtPosition:(UITextPosition *)position inDirection:(UITextStorageDirection)direction {
 
-    IndexedPosition *pos = (IndexedPosition*)position;
+    EGOIndexedPosition *pos = (EGOIndexedPosition*)position;
     NSInteger index = MAX(pos.index, 0);
     index = MIN(index, _attributedString.length-1);
     
@@ -1228,8 +1306,10 @@ typedef enum {
 }
 
 
-#pragma mark -
-#pragma mark UIKeyInput methods
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: UIKeyInput methods
+/////////////////////////////////////////////////////////////////////////////
 
 - (BOOL)hasText {
     return (_attributedString.length != 0);
@@ -1279,6 +1359,7 @@ typedef enum {
         
     if (text.length > 1 || ([text isEqualToString:@" "] || [text isEqualToString:@"\n"])) {
         [self checkSpellingForRange:[self characterRangeAtIndex:self.selectedRange.location-1]];
+        [self checkLinksForRange:NSMakeRange(0, self.attributedString.length)];
     }
   
 }
@@ -1344,8 +1425,60 @@ typedef enum {
 }
 
 
-#pragma mark -
-#pragma mark SpellCheck 
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: Data Detectors (links)
+/////////////////////////////////////////////////////////////////////////////
+
+- (NSTextCheckingResult*)linkAtIndex:(NSInteger)index {
+    
+    NSRange range = [self characterRangeAtIndex:index];
+    if (range.location==NSNotFound || range.length == 0) {
+        return nil;
+    }
+    
+    __block NSTextCheckingResult *link = nil;
+    NSError *error = nil;
+    NSDataDetector *linkDetector = [NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink error:&error];
+    [linkDetector enumerateMatchesInString:[self.attributedString string] options:0 range:range usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
+        
+        if ([result resultType] == NSTextCheckingTypeLink) {
+            *stop = YES;
+            link = [result retain];
+        }
+        
+    }];
+
+    return [link autorelease];
+    
+}
+
+- (void)checkLinksForRange:(NSRange)range {
+    
+    NSDictionary *linkAttributes = [NSDictionary dictionaryWithObjectsAndKeys:(id)[UIColor blueColor].CGColor, kCTForegroundColorAttributeName, [NSNumber numberWithInt:(int)kCTUnderlineStyleSingle], kCTUnderlineStyleAttributeName, nil];
+    
+    NSMutableAttributedString *string = [_attributedString mutableCopy];
+    NSError *error = nil;
+	NSDataDetector *linkDetector = [NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink error:&error];
+	[linkDetector enumerateMatchesInString:[string string] options:0 range:range usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
+
+        if ([result resultType] == NSTextCheckingTypeLink) {
+            [string addAttributes:linkAttributes range:[result range]];
+        }
+
+    }];
+ 
+    if (![self.attributedString isEqualToAttributedString:string]) {
+        self.attributedString = string;
+    }
+    
+}
+
+
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: Spell Checking
+/////////////////////////////////////////////////////////////////////////////
 
 - (void)insertCorrectionAttributesForRange:(NSRange)range {
     
@@ -1408,8 +1541,10 @@ typedef enum {
 }
 
 
-#pragma mark -
-#pragma mark Gestures 
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: Gestures
+/////////////////////////////////////////////////////////////////////////////
 
 - (EGOTextWindow*)egoTextWindow {
     
@@ -1559,33 +1694,6 @@ typedef enum {
     
 }
 
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer{
-
-    if ([gestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPanGestureRecognizer")]) {
-        UIMenuController *menuController = [UIMenuController sharedMenuController];
-        if ([menuController isMenuVisible]) {
-            [menuController setMenuVisible:NO animated:NO];
-        }
-    }
-    
-    return NO;
-    
-}
-
-- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer{
-    
-    if (gestureRecognizer==_longPress) {
-        
-        if (_selectedRange.length>0 && _selectionView!=nil) {            
-            return CGRectContainsPoint(CGRectInset([_textContentView convertRect:_selectionView.frame toView:self], -20.0f, -20.0f) , [gestureRecognizer locationInView:self]);
-        }
-        
-    }
-    
-    return YES;
-    
-}
-
 - (void)doubleTap:(UITapGestureRecognizer*)gesture {
     
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showMenu) object:nil];
@@ -1607,12 +1715,12 @@ typedef enum {
 }
 
 - (void)tap:(UITapGestureRecognizer*)gesture {
-    
-    if ([self isEditable] && ![self isFirstResponder]) {
+        
+    if (_editable && ![self isFirstResponder]) {
         [self becomeFirstResponder];  
         return;
     }
-    
+        
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showMenu) object:nil];
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showCorrectionMenu) object:nil];
     
@@ -1622,7 +1730,17 @@ typedef enum {
     }
     
     NSInteger index = [self closestWhiteSpaceIndexToPoint:[gesture locationInView:self]];
+    
+    
+    if (_delegateRespondsToDidSelectURL) {
+        NSTextCheckingResult *_link = [self linkAtIndex:index];
+        if (_link!=nil) {
+            [self setLinkRangeFromTextCheckerResults:_link];
+        }
+        return;
+    }
 
+    
     UIMenuController *menuController = [UIMenuController sharedMenuController];
     if ([menuController isMenuVisible]) {
 
@@ -1650,12 +1768,63 @@ typedef enum {
 }
 
 
-#pragma mark -
-#pragma mark UIResponder
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: UIGestureRecognizerDelegate
+/////////////////////////////////////////////////////////////////////////////
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer{
+    
+    if ([gestureRecognizer isKindOfClass:NSClassFromString(@"UIScrollViewPanGestureRecognizer")]) {
+        UIMenuController *menuController = [UIMenuController sharedMenuController];
+        if ([menuController isMenuVisible]) {
+            [menuController setMenuVisible:NO animated:NO];
+        }
+    }
+    
+    return NO;
+    
+}
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer{
+    
+    if (gestureRecognizer==_longPress) {
+        
+        if (_selectedRange.length>0 && _selectionView!=nil) {            
+            return CGRectContainsPoint(CGRectInset([_textContentView convertRect:_selectionView.frame toView:self], -20.0f, -20.0f) , [gestureRecognizer locationInView:self]);
+        }
+        
+    }
+    
+    return YES;
+    
+}
+
+
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: UIActionSheetDelegate
+/////////////////////////////////////////////////////////////////////////////
+
+- (void)actionSheet:(UIActionSheet *)actionSheet willDismissWithButtonIndex:(NSInteger)buttonIndex {
+   
+    if (_delegateRespondsToDidSelectURL && actionSheet.cancelButtonIndex != buttonIndex) {
+        [self.delegate egoTextView:self didSelectURL:[NSURL URLWithString:actionSheet.title]];
+    }
+    
+    [self setLinkRange:NSMakeRange(NSNotFound, 0)];
+
+}
+
+
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: UIResponder
+/////////////////////////////////////////////////////////////////////////////
 
 - (BOOL)canBecomeFirstResponder {
 
-    if (_editable && ([self.delegate respondsToSelector:@selector(egoTextViewShouldBeginEditing:)])) {
+    if (_editable && _delegateRespondsToShouldBeginEditing) {
         return [self.delegate egoTextViewShouldBeginEditing:self];
     }
     
@@ -1666,11 +1835,12 @@ typedef enum {
 
     if (_editable) {
         
-        if (([self.delegate respondsToSelector:@selector(egoTextViewDidBeginEditing:)])) {
+        _editing = YES;
+
+        if (_delegateRespondsToDidBeginEditing) {
             [self.delegate egoTextViewDidBeginEditing:self];
         }
         
-        _editing = YES;
         [self selectionChanged];
     }
 
@@ -1679,7 +1849,7 @@ typedef enum {
 
 - (BOOL)canResignFirstResponder {
     
-    if (_editable && ([self.delegate respondsToSelector:@selector(egoTextViewShouldEndEditing:)])) {
+    if (_editable && _delegateRespondsToShouldEndEditing) {
         return [self.delegate egoTextViewShouldEndEditing:self];
     }
     
@@ -1690,11 +1860,12 @@ typedef enum {
 
     if (_editable) {
         
-        if (([self.delegate respondsToSelector:@selector(egoTextViewDidEndEditing:)])) {
+        _editing = NO;	
+
+        if (_delegateRespondsToDidEndEditing) {
             [self.delegate egoTextViewDidEndEditing:self];
         }
         
-        _editing = NO;	
         [self selectionChanged];
         
     }
@@ -1704,8 +1875,10 @@ typedef enum {
 }
 
 
-#pragma mark -
-#pragma mark Menu Presentation
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: UIMenu Presentation
+/////////////////////////////////////////////////////////////////////////////
 
 - (CGRect)menuPresentationRect {
     
@@ -1845,8 +2018,10 @@ typedef enum {
 }
 
 
-#pragma mark -
-#pragma mark Menu Actions
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: UIMenu Actions
+/////////////////////////////////////////////////////////////////////////////
 
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender {
     
@@ -1883,7 +2058,7 @@ typedef enum {
     if (replacementRange.location!=NSNotFound && replacementRange.length!=0) {
         NSString *text = [self.menuItemActions objectForKey:NSStringFromSelector(_cmd)];
         [self.inputDelegate textWillChange:self];       
-        [self replaceRange:[IndexedRange rangeWithNSRange:replacementRange] withText:text];
+        [self replaceRange:[EGOIndexedRange rangeWithNSRange:replacementRange] withText:text];
         [self.inputDelegate textDidChange:self];       
         replacementRange.length = text.length;
         [self removeCorrectionAttributesForRange:replacementRange];
@@ -1979,32 +2154,18 @@ typedef enum {
     
 }
 
-
-#pragma mark -
-#pragma mark Dealloc EGOTextView
-
-- (void)dealloc {
-
-    _textWindow=nil;
-    [_font release], _font=nil;
-    [_attributedString release], _attributedString=nil;
-    [_caretView release], _caretView=nil;
-    self.menuItemActions=nil;
-    self.defaultAttributes=nil;
-    self.correctionAttributes=nil;
-    [super dealloc];
-}
-
 @end
 
-#pragma mark -
-#pragma mark IndexedPosition
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: EGOIndexedPosition
+/////////////////////////////////////////////////////////////////////////////
 
-@implementation IndexedPosition 
+@implementation EGOIndexedPosition 
 @synthesize index=_index;
 
-+ (IndexedPosition *)positionWithIndex:(NSUInteger)index {
-    IndexedPosition *pos = [[IndexedPosition alloc] init];
++ (EGOIndexedPosition *)positionWithIndex:(NSUInteger)index {
+    EGOIndexedPosition *pos = [[EGOIndexedPosition alloc] init];
     pos.index = index;
     return [pos autorelease];
 }
@@ -2012,27 +2173,29 @@ typedef enum {
 @end
 
 
-#pragma mark -
-#pragma mark IndexedRange 
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: EGOIndexedRange
+/////////////////////////////////////////////////////////////////////////////
 
-@implementation IndexedRange 
+@implementation EGOIndexedRange 
 @synthesize range=_range;
 
-+ (IndexedRange *)rangeWithNSRange:(NSRange)theRange {
++ (EGOIndexedRange *)rangeWithNSRange:(NSRange)theRange {
     if (theRange.location == NSNotFound)
         return nil;
     
-    IndexedRange *range = [[IndexedRange alloc] init];
+    EGOIndexedRange *range = [[EGOIndexedRange alloc] init];
     range.range = theRange;
     return [range autorelease];
 }
 
 - (UITextPosition *)start {
-    return [IndexedPosition positionWithIndex:self.range.location];
+    return [EGOIndexedPosition positionWithIndex:self.range.location];
 }
 
 - (UITextPosition *)end {
-	return [IndexedPosition positionWithIndex:(self.range.location + self.range.length)];
+	return [EGOIndexedPosition positionWithIndex:(self.range.location + self.range.length)];
 }
 
 -(BOOL)isEmpty {
@@ -2042,8 +2205,10 @@ typedef enum {
 @end
 
 
-#pragma mark -
-#pragma mark ContentView
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: EGOContentView
+/////////////////////////////////////////////////////////////////////////////
 
 @implementation EGOContentView
 
@@ -2073,8 +2238,10 @@ typedef enum {
 @end
 
 
-#pragma mark -
-#pragma mark CaretView
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: EGOCaretView
+/////////////////////////////////////////////////////////////////////////////
 
 @implementation EGOCaretView
 
@@ -2126,8 +2293,10 @@ static const NSTimeInterval kBlinkRate = 1.0;
 @end
 
 
-#pragma mark -
-#pragma mark LoupeView
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: EGOLoupeView
+/////////////////////////////////////////////////////////////////////////////
 
 @implementation EGOLoupeView
 
@@ -2173,8 +2342,10 @@ static const NSTimeInterval kBlinkRate = 1.0;
 @end
 
 
-#pragma mark -
-#pragma mark EGOTextWindow
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: EGOTextWindow
+/////////////////////////////////////////////////////////////////////////////
 
 @implementation EGOTextWindow
 
@@ -2186,7 +2357,7 @@ static const CGFloat kLoupeScale = 1.2f;
 static const CGFloat kMagnifyScale = 1.0f;
 static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
 
-- (id)initWithFrame:(CGRect)frame{    
+- (id)initWithFrame:(CGRect)frame {    
     if ((self = [super initWithFrame:frame])) {
         self.backgroundColor = [UIColor clearColor];
         _type = EGOWindowLoupe;
@@ -2284,14 +2455,14 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     
 }
 
-- (UIImage*)screenshotFromCaretFrame:(CGRect)rect inView:(UIView*)view scale:(BOOL)scale{
+- (UIImage*)screenshotFromCaretFrame:(CGRect)rect inView:(UIView*)view scale:(BOOL)scale {
     
     CGRect offsetRect = [self convertRect:rect toView:view];
     offsetRect.origin.y += ((UIScrollView*)view.superview).contentOffset.y;
     offsetRect.origin.y -= _view.bounds.size.height+20.0f;
     offsetRect.origin.x -= (_view.bounds.size.width/2);
     
-    CGFloat magnifyScale = 1.0f; 
+    //CGFloat magnifyScale = 1.0f; 
     
     if (scale) {
         //CGFloat max = 24.0f;
@@ -2380,8 +2551,10 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
 @end
 
 
-#pragma mark -
-#pragma mark MagnifyView
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: EGOMagnifyView
+/////////////////////////////////////////////////////////////////////////////
 
 @implementation EGOMagnifyView
 
@@ -2427,8 +2600,10 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
 @end
 
 
-#pragma mark -
-#pragma mark SelectionView
+/////////////////////////////////////////////////////////////////////////////
+// MARK: -
+// MARK: EGOSelectionView
+/////////////////////////////////////////////////////////////////////////////
 
 @implementation EGOSelectionView
 

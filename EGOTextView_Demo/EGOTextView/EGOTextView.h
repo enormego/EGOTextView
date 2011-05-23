@@ -24,6 +24,7 @@
 
 #import <UIKit/UIKit.h>
 #import <CoreText/CoreText.h>
+#include <objc/runtime.h>
 
 @class EGOTextView;
 @protocol EGOTextViewDelegate <NSObject, UIScrollViewDelegate>
@@ -39,6 +40,8 @@
 
 - (void)egoTextViewDidChangeSelection:(EGOTextView *)textView;
 
+- (void)egoTextView:(EGOTextView*)textView didSelectURL:(NSURL*)URL;
+
 @end
 
 @class EGOCaretView, EGOContentView, EGOTextWindow, EGOMagnifyView, EGOSelectionView;
@@ -49,10 +52,12 @@
     BOOL                _editing;
     BOOL                _editable; 
     BOOL                _spellCheck;
+    BOOL                _dataDetectors;
     
     NSRange             _markedRange; 
     NSRange             _selectedRange;
     NSRange             _correctionRange;
+    NSRange             _linkRange;
 
     CTFramesetterRef    _framesetter;
     CTFrameRef          _frame;

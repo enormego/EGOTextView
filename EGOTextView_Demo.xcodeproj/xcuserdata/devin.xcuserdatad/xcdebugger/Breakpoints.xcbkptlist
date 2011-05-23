@@ -2,22 +2,6 @@
 <Bucket
    type = "1"
    version = "1.0">
-   <FileBreakpoints>
-      <FileBreakpoint
-         shouldBeEnabled = "No"
-         ignoreCount = "0"
-         continueAfterRunningActions = "No"
-         isPathRelative = "1"
-         filePath = "EGOTextView_Demo/EGOTextView/EGOTextView.m"
-         timestampString = "326243466.109062"
-         startingColumnNumber = "9223372036854775807"
-         endingColumnNumber = "9223372036854775807"
-         startingLineNumber = "631"
-         endingLineNumber = "631"
-         landmarkName = "-characterRangeAtIndex:"
-         landmarkType = "5">
-      </FileBreakpoint>
-   </FileBreakpoints>
    <SymbolicBreakpoints>
       <SymbolicBreakpoint
          shouldBeEnabled = "Yes"

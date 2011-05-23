@@ -3,7 +3,7 @@
 //  EGOTextView_Demo
 //
 //  Created by Devin Doty on 4/18/11.
-//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//  Copyright 2011 enormego. All rights reserved.
 //
 
 #import "EGOTextView_DemoAppDelegate.h"
