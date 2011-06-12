@@ -92,6 +92,7 @@
 		03FF5EBC135CA49D00268656 = {
 			isa = PBXGroup;
 			children = (
+				03FF5EEB135CA4AC00268656 /* EGOTextView */,
 				03FF5ED1135CA49D00268656 /* EGOTextView_Demo */,
 				03FF5ECA135CA49D00268656 /* Frameworks */,
 				03FF5EC8135CA49D00268656 /* Products */,
@@ -121,7 +122,6 @@
 		03FF5ED1135CA49D00268656 /* EGOTextView_Demo */ = {
 			isa = PBXGroup;
 			children = (
-				03FF5EEB135CA4AC00268656 /* EGOTextView */,
 				03FF5EDA135CA49D00268656 /* EGOTextView_DemoAppDelegate.h */,
 				03FF5EDB135CA49D00268656 /* EGOTextView_DemoAppDelegate.m */,
 				03FF5EDD135CA49E00268656 /* MainWindow.xib */,

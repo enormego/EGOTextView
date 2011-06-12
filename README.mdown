@@ -1,0 +1,35 @@
+# About EGOTextView
+EGOTextView is a complete drop in replacement for UITextView created by enormego, that adds support for Rich Text Editing.
+
+EGOTextView is tested to work with with iPhone OS 4.0 and newer.
+
+# Classes
+## EGOTextView
+UITextView replacement with additional support for NSAttributedString.
+
+# Documentation
+Check out each header file for a complete listing of each method.
+
+# Questions
+Feel free to contact info@enormego.com if you need any help with EGOTextView.
+
+# License
+Copyright (c) 2011 enormego
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
