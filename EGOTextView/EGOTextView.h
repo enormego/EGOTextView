@@ -21,10 +21,10 @@
 //  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 //  THE SOFTWARE.
-//
 
 #import <UIKit/UIKit.h>
 #import <CoreText/CoreText.h>
+#import <UIKit/UITextChecker.h>
 #include <objc/runtime.h>
 
 @class EGOTextView;
@@ -48,6 +48,22 @@
 @class EGOCaretView, EGOContentView, EGOTextWindow, EGOMagnifyView, EGOSelectionView;
 @interface EGOTextView : UIScrollView <UITextInputTraits, UITextInput> {
 @private
+    NSMutableAttributedString          *_mutableAttributedString;
+    NSDictionary                       *_markedTextStyle;
+    id <UITextInputDelegate>           _inputDelegate;
+    UITextInputStringTokenizer         *_tokenizer;
+    UITextChecker                      *_textChecker;
+    UILongPressGestureRecognizer       *_longPress;
+    
+    BOOL _ignoreSelectionMenu;
+    BOOL _delegateRespondsToShouldBeginEditing;
+    BOOL _delegateRespondsToShouldEndEditing;
+    BOOL _delegateRespondsToDidBeginEditing;
+    BOOL _delegateRespondsToDidEndEditing;
+    BOOL _delegateRespondsToDidChange;
+    BOOL _delegateRespondsToDidChangeSelection;
+    BOOL _delegateRespondsToDidSelectURL;
+    
     NSAttributedString  *_attributedString;
     UIFont              *_font; 
     BOOL                _editing;
@@ -69,6 +85,14 @@
     EGOSelectionView    *_selectionView;
     
 }
+
+@property(nonatomic) UIDataDetectorTypes dataDetectorTypes; // UIDataDetectorTypeLink supported
+@property(nonatomic) UITextAutocapitalizationType autocapitalizationType;
+@property(nonatomic) UITextAutocorrectionType autocorrectionType;        
+@property(nonatomic) UIKeyboardType keyboardType;                       
+@property(nonatomic) UIKeyboardAppearance keyboardAppearance;             
+@property(nonatomic) UIReturnKeyType returnKeyType;                    
+@property(nonatomic) BOOL enablesReturnKeyAutomatically; 
 
 @property(nonatomic,assign) id <EGOTextViewDelegate> delegate;
 @property(nonatomic,copy) NSAttributedString *attributedString;

@@ -24,7 +24,6 @@
 //
 
 #import "EGOTextView.h"
-#import <UIKit/UITextChecker.h>
 #import <QuartzCore/QuartzCore.h>
 
 typedef enum {
@@ -94,6 +93,7 @@ typedef enum {
 - (void)renderWithContentView:(UIView*)view fromRect:(CGRect)rect;
 - (void)showFromView:(UIView*)view rect:(CGRect)rect;
 - (void)hide:(BOOL)animated;
+- (void)updateWindowTransform;
 @end
 
 
@@ -135,30 +135,6 @@ typedef enum {
 
 @interface EGOTextView (Private)
 
-    NSMutableAttributedString          *_mutableAttributedString;
-    NSDictionary                       *_markedTextStyle;
-    id <UITextInputDelegate>           _inputDelegate;
-    UITextInputStringTokenizer         *_tokenizer;
-    UITextChecker                      *_textChecker;
-    UILongPressGestureRecognizer       *_longPress;
-
-    BOOL _ignoreSelectionMenu;
-    BOOL _delegateRespondsToShouldBeginEditing;
-    BOOL _delegateRespondsToShouldEndEditing;
-    BOOL _delegateRespondsToDidBeginEditing;
-    BOOL _delegateRespondsToDidEndEditing;
-    BOOL _delegateRespondsToDidChange;
-    BOOL _delegateRespondsToDidChangeSelection;
-    BOOL _delegateRespondsToDidSelectURL;
-
-
-@property(nonatomic) UITextAutocapitalizationType autocapitalizationType;
-@property(nonatomic) UITextAutocorrectionType autocorrectionType;        
-@property(nonatomic) UIKeyboardType keyboardType;                       
-@property(nonatomic) UIKeyboardAppearance keyboardAppearance;             
-@property(nonatomic) UIReturnKeyType returnKeyType;                    
-@property(nonatomic) BOOL enablesReturnKeyAutomatically; 
-
 - (CGRect)caretRectForIndex:(int)index;
 - (CGRect)firstRectForNSRange:(NSRange)range;
 - (NSInteger)closestIndexToPoint:(CGPoint)point;
@@ -175,6 +151,7 @@ typedef enum {
 + (UIColor *)selectionColor;
 + (UIColor *)spellingSelectionColor;
 + (UIColor *)caretColor;
+
 @end
 
 @interface EGOTextView ()
@@ -201,12 +178,14 @@ typedef enum {
 @synthesize inputDelegate=_inputDelegate;
 @synthesize menuItemActions;
 
+@synthesize dataDetectorTypes;
 @synthesize autocapitalizationType;
 @synthesize autocorrectionType;
 @synthesize keyboardType;
 @synthesize keyboardAppearance;
 @synthesize returnKeyType;
 @synthesize enablesReturnKeyAutomatically;
+
 
 - (id)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
@@ -219,7 +198,7 @@ typedef enum {
         self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         
         EGOContentView *contentView = [[EGOContentView alloc] initWithFrame:CGRectInset(self.bounds, 8.0f, 8.0f)];
-        contentView.autoresizingMask = 0;
+        contentView.autoresizingMask = self.autoresizingMask;
         contentView.delegate = self;
         [self addSubview:contentView];
         _textContentView = [contentView retain];
@@ -356,6 +335,11 @@ typedef enum {
     _attributedString = [string copy];
     [aString release], aString = nil;
     
+    NSRange range = NSMakeRange(0, _attributedString.string.length);
+    if (!_editing && !_editable) {
+        [self checkLinksForRange:range];
+    }
+    
     [self textChanged];
 
     if (_delegateRespondsToDidChange) {
@@ -423,7 +407,6 @@ typedef enum {
 // MARK: -
 // MARK: Layout methods
 /////////////////////////////////////////////////////////////////////////////
-
 
 - (NSRange)rangeIntersection:(NSRange)first withSecond:(NSRange)second {
 
@@ -989,12 +972,12 @@ typedef enum {
 }
 
 - (void)setLinkRangeFromTextCheckerResults:(NSTextCheckingResult*)results {
-        
-    [self setLinkRange:[results range]];
-    
-    UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:[[results URL] absoluteString] delegate:(id<UIActionSheetDelegate>)self cancelButtonTitle:@"Cancel" destructiveButtonTitle:nil otherButtonTitles:@"Open", nil];
-    [actionSheet showInView:self];
-    [actionSheet release];
+            
+    if (_linkRange.length>0) {
+        UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:[[results URL] absoluteString] delegate:(id<UIActionSheetDelegate>)self cancelButtonTitle:@"Cancel" destructiveButtonTitle:nil otherButtonTitles:@"Open", nil];
+        [actionSheet showInView:self];
+        [actionSheet release];
+    }
     
 }
 
@@ -1158,9 +1141,13 @@ typedef enum {
         case UITextLayoutDirectionLeft:
             newPos -= offset;
             break;
-        UITextLayoutDirectionUp:
-        UITextLayoutDirectionDown:
+        UITextLayoutDirectionUp: // not supported right now
+            break; 
+        UITextLayoutDirectionDown: // not supported right now
             break;
+        default:
+            break;
+
     }
     	
     if (newPos < 0)
@@ -1474,6 +1461,25 @@ typedef enum {
     
 }
 
+- (BOOL)selectedLinkAtIndex:(NSInteger)index {
+    
+    NSTextCheckingResult *_link = [self linkAtIndex:index];
+    if (_link!=nil) {
+        [self setLinkRange:[_link range]];
+        return YES;
+    }
+    
+    return NO;
+}
+
+- (void)openLink:(NSURL*)aURL {
+    
+    [[UIApplication sharedApplication] openURL:aURL];
+    
+    //self.
+    
+}
+
 
 /////////////////////////////////////////////////////////////////////////////
 // MARK: -
@@ -1561,7 +1567,7 @@ typedef enum {
         }
         
         if (window==nil) {
-            window = [[EGOTextWindow alloc] initWithFrame:self.window.frame];
+            window = [[EGOTextWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
         }
         
         window.windowLevel = UIWindowLevelStatusBar;
@@ -1577,6 +1583,14 @@ typedef enum {
 - (void)longPress:(UILongPressGestureRecognizer*)gesture {
 
     if (gesture.state==UIGestureRecognizerStateBegan || gesture.state == UIGestureRecognizerStateChanged) {
+        
+        if (_linkRange.length>0 && gesture.state == UIGestureRecognizerStateBegan) {
+            NSTextCheckingResult *link = [self linkAtIndex:_linkRange.location];
+            [self setLinkRangeFromTextCheckerResults:link];
+            gesture.enabled=NO;
+            gesture.enabled=YES;
+        }
+        
     
         UIMenuController *menuController = [UIMenuController sharedMenuController];
         if ([menuController isMenuVisible]) {
@@ -1590,29 +1604,10 @@ typedef enum {
             [_caretView show];
         }
         
-        if (_textWindow==nil) {
-        
-            EGOTextWindow *window = nil;
-            
-            for (EGOTextWindow *aWindow in [[UIApplication sharedApplication] windows]){
-                if ([aWindow isKindOfClass:[EGOTextWindow class]]) {
-                    window = aWindow;
-                    window.frame = [[UIScreen mainScreen] bounds];
-                    break;
-                }
-            }
-            
-            if (window==nil) {
-                window = [[EGOTextWindow alloc] initWithFrame:self.window.frame];
-            }
-            
-            window.windowLevel = UIWindowLevelStatusBar;
-            window.hidden = NO;
-            _textWindow=window;
-            [_textWindow setType:_selection ? EGOWindowMagnify : EGOWindowLoupe];
-            
-        }
-           
+        _textWindow = [self egoTextWindow];
+        [_textWindow updateWindowTransform];
+        [_textWindow setType:_selection ? EGOWindowMagnify : EGOWindowLoupe];
+
         point.y -= 20.0f;
         NSInteger index = [self closestIndexToPoint:point];
         
@@ -1648,7 +1643,7 @@ typedef enum {
             if (gesture.state == UIGestureRecognizerStateBegan) {
                 
                 [_textWindow showFromView:_textContentView rect:[_textContentView convertRect:rect toView:_textWindow]];
-                
+
             } else {
                 
                 [_textWindow renderWithContentView:_textContentView fromRect:[_textContentView convertRect:rect toView:_textWindow]];
@@ -1731,15 +1726,11 @@ typedef enum {
     
     NSInteger index = [self closestWhiteSpaceIndexToPoint:[gesture locationInView:self]];
     
-    
-    if (_delegateRespondsToDidSelectURL) {
-        NSTextCheckingResult *_link = [self linkAtIndex:index];
-        if (_link!=nil) {
-            [self setLinkRangeFromTextCheckerResults:_link];
+    if (_delegateRespondsToDidSelectURL && !_editing) {
+        if ([self selectedLinkAtIndex:index]) {
+            return;
         }
-        return;
     }
-
     
     UIMenuController *menuController = [UIMenuController sharedMenuController];
     if ([menuController isMenuVisible]) {
@@ -1807,9 +1798,19 @@ typedef enum {
 /////////////////////////////////////////////////////////////////////////////
 
 - (void)actionSheet:(UIActionSheet *)actionSheet willDismissWithButtonIndex:(NSInteger)buttonIndex {
-   
-    if (_delegateRespondsToDidSelectURL && actionSheet.cancelButtonIndex != buttonIndex) {
-        [self.delegate egoTextView:self didSelectURL:[NSURL URLWithString:actionSheet.title]];
+       
+    if (actionSheet.cancelButtonIndex != buttonIndex) {
+        
+        if (_delegateRespondsToDidChange) {
+            [self.delegate egoTextView:self didSelectURL:[NSURL URLWithString:actionSheet.title]];
+        } else {
+            [self openLink:[NSURL URLWithString:actionSheet.title]];
+        }
+        
+    } else {
+        
+        [self becomeFirstResponder];
+        
     }
     
     [self setLinkRange:NSMakeRange(NSNotFound, 0)];
@@ -1926,7 +1927,7 @@ typedef enum {
     if (_editing) {
         
         NSRange range = [self characterRangeAtIndex:self.selectedRange.location];
-        if (range.location!=NSNotFound && range.length>1 && range.location >= 0) {
+        if (range.location!=NSNotFound && range.length>1) {
             
             NSString *language = [[UITextChecker availableLanguages] objectAtIndex:0];
             if (!language)
@@ -2032,7 +2033,7 @@ typedef enum {
         return NO;
     }
 
-    if ((action==@selector(cut:))) {
+    if (action==@selector(cut:)) {
         return (_selectedRange.length>0 && _editing);
     } else if (action==@selector(copy:)) {
         return ((_selectedRange.length>0));
@@ -2070,19 +2071,9 @@ typedef enum {
 
 }
 
-- (void)spellCheckMenuEmpty:(id)sender{
+- (void)spellCheckMenuEmpty:(id)sender {
 
     self.correctionRange = NSMakeRange(NSNotFound, 0);
-    
-}
-
-- (void)paste:(id)sender {
-    
-    NSString *pasteText = [[UIPasteboard generalPasteboard] valueForPasteboardType:@"public.utf8-plain-text"];
-    
-    if (pasteText!=nil) {
-        [self insertText:pasteText];
-    }
     
 }
 
@@ -2093,6 +2084,16 @@ typedef enum {
     if (_selectionView) {
         [self showMenu];
     }
+}
+
+- (void)paste:(id)sender {
+    
+    NSString *pasteText = [[UIPasteboard generalPasteboard] valueForPasteboardType:@"public.utf8-plain-text"];
+    
+    if (pasteText!=nil) {
+        [self insertText:pasteText];
+    }
+    
 }
 
 - (void)selectAll:(id)sender {
@@ -2225,6 +2226,13 @@ typedef enum {
     return self;
 }
 
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    
+    [self.delegate textChanged]; // reset layout on frame / orientation change
+    
+}
+
 - (void)drawRect:(CGRect)rect {
     
     [_delegate drawContentInRect:rect];
@@ -2281,7 +2289,7 @@ static const NSTimeInterval kBlinkRate = 1.0;
     animation.calculationMode = kCAAnimationCubic;
     animation.duration = kBlinkRate;
     animation.beginTime = CACurrentMediaTime() + kInitialBlinkDelay;
-    animation.repeatCount = 1e50f;
+    animation.repeatCount = CGFLOAT_MAX;
     [self.layer addAnimation:animation forKey:@"BlinkAnimation"];
     
 }
@@ -2375,7 +2383,7 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     
     if (!_showing) {
         
-        if ((_view==nil)) {
+        if (_view==nil) {
             UIView *view;
             if (_type==EGOWindowLoupe) {
                 view = [[EGOLoupeView alloc] init];
@@ -2541,6 +2549,33 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
         
     }
     
+}
+
+- (void)updateWindowTransform {
+    
+    self.frame = [[UIScreen mainScreen] bounds];
+    switch ([[UIApplication sharedApplication] statusBarOrientation]) {
+        case UIInterfaceOrientationPortrait:
+            self.layer.transform = CATransform3DIdentity;
+            break;
+        case UIInterfaceOrientationLandscapeRight:
+            self.layer.transform = CATransform3DMakeRotation((M_PI/180)*90, 0, 0, 1);
+            break;
+        case UIInterfaceOrientationLandscapeLeft:
+            self.layer.transform = CATransform3DMakeRotation((M_PI/180)*-90, 0, 0, 1);
+            break;
+        case UIInterfaceOrientationPortraitUpsideDown:
+            self.layer.transform = CATransform3DMakeRotation((M_PI/180)*180, 0, 0, 1);
+            break;
+        default:
+            break;
+    }
+    
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    [self updateWindowTransform];
 }
 
 - (void)dealloc {
