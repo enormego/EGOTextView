@@ -1259,6 +1259,10 @@ typedef enum {
 	return [self caretRectForIndex:pos.index];    
 }
 
+- (UIView *)textInputView {
+    return _textContentView;
+}
+
 // MARK: UITextInput - Hit testing
 
 - (UITextPosition*)closestPositionToPoint:(CGPoint)point {
