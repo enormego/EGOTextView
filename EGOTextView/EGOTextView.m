@@ -187,44 +187,54 @@ typedef enum {
 @synthesize enablesReturnKeyAutomatically;
 
 
+- (void)commonInit {
+    [self setText:@""];
+    self.alwaysBounceVertical = YES;
+    self.editable = YES;
+    self.font = [UIFont systemFontOfSize:17];
+    self.backgroundColor = [UIColor whiteColor];
+    self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.clipsToBounds = YES;
+    
+    EGOContentView *contentView = [[EGOContentView alloc] initWithFrame:CGRectInset(self.bounds, 8.0f, 8.0f)];
+    contentView.autoresizingMask = self.autoresizingMask;
+    contentView.delegate = self;
+    [self addSubview:contentView];
+    _textContentView = [contentView retain];
+    [contentView release];
+    
+    UILongPressGestureRecognizer *gesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
+    gesture.delegate = (id<UIGestureRecognizerDelegate>)self;
+    [self addGestureRecognizer:gesture];
+    [gesture release];
+    _longPress = gesture;
+    
+    UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(doubleTap:)];
+    [doubleTap setNumberOfTapsRequired:2];
+    [self addGestureRecognizer:doubleTap];
+    [doubleTap release];
+    
+    UITapGestureRecognizer *singleTap =  [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tap:)];
+    [self addGestureRecognizer:singleTap];
+    [singleTap release];
+}
+
 - (id)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
-        
-        [self setText:@""];
-        self.alwaysBounceVertical = YES;
-        self.editable = YES;
-        self.font = [UIFont systemFontOfSize:17];
-        self.backgroundColor = [UIColor whiteColor];
-        self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        
-        EGOContentView *contentView = [[EGOContentView alloc] initWithFrame:CGRectInset(self.bounds, 8.0f, 8.0f)];
-        contentView.autoresizingMask = self.autoresizingMask;
-        contentView.delegate = self;
-        [self addSubview:contentView];
-        _textContentView = [contentView retain];
-        [contentView release];
-            
-        UILongPressGestureRecognizer *gesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
-        gesture.delegate = (id<UIGestureRecognizerDelegate>)self;
-        [self addGestureRecognizer:gesture];
-        [gesture release];
-        _longPress = gesture;
-        
-        UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(doubleTap:)];
-        [doubleTap setNumberOfTapsRequired:2];
-        [self addGestureRecognizer:doubleTap];
-        [doubleTap release];
-        
-        UITapGestureRecognizer *singleTap =  [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tap:)];
-        [self addGestureRecognizer:singleTap];
-        [singleTap release];
-
+        [self commonInit];
     }
     return self;
 }
 
 - (id)init {
     if ((self = [self initWithFrame:CGRectZero])) {}
+    return self;
+}
+
+- (id)initWithCoder: (NSCoder *)aDecoder {
+    if ((self = [super initWithCoder: aDecoder])) {
+        [self commonInit];
+    }
     return self;
 }
 
