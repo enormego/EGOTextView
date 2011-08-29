@@ -511,7 +511,7 @@ typedef enum {
             CGFloat ascent, descent;
             CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
             
-            CGRect selectionRect = CGRectMake(xStart, origin.y - descent, xEnd - xStart, ascent + descent); 
+            CGRect selectionRect = CGRectMake(origin.x + xStart, origin.y - descent, xEnd - xStart, ascent + descent); 
             
             if (range.length==1) {
                 selectionRect.size.width = _textContentView.bounds.size.width;
@@ -572,7 +572,8 @@ typedef enum {
             CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
             CFRange cfRange = CTLineGetStringRange(line);
             NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
-            CFIndex cfIndex = CTLineGetStringIndexForPosition(line, point);
+            CGPoint convertedPoint = CGPointMake(point.x - origins[i].x, point.y - origins[i].y);
+            CFIndex cfIndex = CTLineGetStringIndexForPosition(line, convertedPoint);
             NSInteger index = cfIndex == kCFNotFound ? NSNotFound : cfIndex;
                     
             if(range.location==NSNotFound)
@@ -650,7 +651,8 @@ typedef enum {
     for (int i = 0; i < lines.count; i++) {
         if (point.y > origins[i].y) {
             CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
-            index = CTLineGetStringIndexForPosition(line, point);  
+            CGPoint convertedPoint = CGPointMake(point.x - origins[i].x, point.y - origins[i].y);
+            index = CTLineGetStringIndexForPosition(line, convertedPoint);  
             break;
         }
     }
@@ -677,7 +679,8 @@ typedef enum {
         if (point.y > origins[i].y) {
 
             CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
-            NSInteger index = CTLineGetStringIndexForPosition(line, point);
+            CGPoint convertedPoint = CGPointMake(point.x - origins[i].x, point.y - origins[i].y);
+            NSInteger index = CTLineGetStringIndexForPosition(line, convertedPoint);
            
             CFRange cfRange = CTLineGetStringRange(line);
             NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
@@ -760,7 +763,7 @@ typedef enum {
         free(origins);
         
         origin.y -= self.font.leading;
-        return CGRectMake(xPos, floorf(origin.y - descent), 3, ceilf((descent*2) + ascent));  
+        return CGRectMake(origin.x + xPos, floorf(origin.y - descent), 3, ceilf((descent*2) + ascent));  
         
     }
 
@@ -795,7 +798,7 @@ typedef enum {
 
             }
             
-            returnRect = CGRectMake(xPos,  floorf(origin.y - descent), 3, ceilf((descent*2) + ascent));
+            returnRect = CGRectMake(origin.x + xPos,  floorf(origin.y - descent), 3, ceilf((descent*2) + ascent));
 
         } 
         
@@ -830,7 +833,7 @@ typedef enum {
             CGFloat ascent, descent;
             CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
             
-            returnRect = [_textContentView convertRect:CGRectMake(xStart, origin.y - descent, xEnd - xStart, ascent + (descent*2)) toView:self];
+            returnRect = [_textContentView convertRect:CGRectMake(origin.x + xStart, origin.y - descent, xEnd - xStart, ascent + (descent*2)) toView:self];
             break;
         }
     }
