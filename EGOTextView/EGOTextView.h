@@ -27,6 +27,10 @@
 #import <UIKit/UITextChecker.h>
 #include <objc/runtime.h>
 
+
+extern NSString * const EGOTextAttachmentAttributeName;
+extern NSString * const EGOTextAttachmentPlaceholderString;
+
 @class EGOTextView;
 @protocol EGOTextViewDelegate <NSObject, UIScrollViewDelegate>
 @optional
@@ -42,6 +46,18 @@
 - (void)egoTextViewDidChangeSelection:(EGOTextView *)textView;
 
 - (void)egoTextView:(EGOTextView*)textView didSelectURL:(NSURL*)URL;
+
+@end
+
+@protocol EGOTextAttachmentCell <NSObject>
+@optional
+
+// the attachment must either implement -attachmentView or both
+// -attachmentSize and -attachmentDrawInRect:
+- (UIView *)attachmentView;
+
+- (CGSize) attachmentSize;
+- (void) attachmentDrawInRect: (CGRect)r;
 
 @end
 
@@ -83,6 +99,8 @@
     EGOTextWindow       *_textWindow;
     EGOCaretView        *_caretView;
     EGOSelectionView    *_selectionView;
+    
+    NSMutableArray      *_attachmentViews;
     
 }
 

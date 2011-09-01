@@ -26,6 +26,9 @@
 #import "EGOTextView.h"
 #import <QuartzCore/QuartzCore.h>
 
+NSString * const EGOTextAttachmentAttributeName = @"com.enormego.EGOTextAttachmentAttribute";
+NSString * const EGOTextAttachmentPlaceholderString = @"\uFFFC";
+
 typedef enum {
     EGOWindowLoupe = 0,
     EGOWindowMagnify,
@@ -35,6 +38,28 @@ typedef enum {
     EGOSelectionTypeLeft = 0,
     EGOSelectionTypeRight,
 } EGOSelectionType;
+
+// MARK: Text attachment helper functions
+static void AttachmentRunDelegateDealloc(void *refCon) {
+    [(id)refCon release];
+}
+
+static CGSize AttachmentRunDelegateGetSize(void *refCon) {
+    id <EGOTextAttachmentCell> cell = refCon;
+    if ([cell respondsToSelector: @selector(attachmentSize)]) {
+        return [cell attachmentSize];
+    } else {
+        return [[cell attachmentView] frame].size;
+    }
+}
+
+static CGFloat AttachmentRunDelegateGetDescent(void *refCon) {
+    return AttachmentRunDelegateGetSize(refCon).height;
+}
+
+static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
+    return AttachmentRunDelegateGetSize(refCon).width;
+}
 
 // MARK: EGOContentView definition
 
@@ -145,6 +170,7 @@ typedef enum {
 - (void)insertCorrectionAttributesForRange:(NSRange)range;
 - (void)showCorrectionMenuForRange:(NSRange)range;
 - (void)checkLinksForRange:(NSRange)range;
+- (void)scanAttachments;
 - (void)showMenu;
 - (CGRect)menuPresentationRect;
 
@@ -303,6 +329,22 @@ typedef enum {
         CFRelease(frameRef);
     }
         
+    for (UIView *view in _attachmentViews) {
+        [view removeFromSuperview];
+    }
+    [_attributedString enumerateAttribute: EGOTextAttachmentAttributeName inRange: NSMakeRange(0, [_attributedString length]) options: 0 usingBlock: ^(id value, NSRange range, BOOL *stop) {
+        
+        if ([value respondsToSelector: @selector(attachmentView)]) {
+            UIView *view = [value attachmentView];
+            [_attachmentViews addObject: view];
+            
+            CGRect rect = [self firstRectForNSRange: range];
+            rect.size = [view frame].size;
+            [view setFrame: rect];
+            [self addSubview: view];
+        }
+    }];
+    
     [_textContentView setNeedsDisplay];
     
 }
@@ -348,6 +390,7 @@ typedef enum {
     NSRange range = NSMakeRange(0, _attributedString.string.length);
     if (!_editing && !_editable) {
         [self checkLinksForRange:range];
+        [self scanAttachments];
     }
     
     [self textChanged];
@@ -511,7 +554,7 @@ typedef enum {
             CGFloat ascent, descent;
             CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
             
-            CGRect selectionRect = CGRectMake(xStart, origin.y - descent, xEnd - xStart, ascent + descent); 
+            CGRect selectionRect = CGRectMake(origin.x + xStart, origin.y - descent, xEnd - xStart, ascent + descent); 
             
             if (range.length==1) {
                 selectionRect.size.width = _textContentView.bounds.size.width;
@@ -550,6 +593,25 @@ typedef enum {
         CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex((CFArrayRef)lines, i);
         CGContextSetTextPosition(ctx, frameRect.origin.x + origins[i].x, frameRect.origin.y + origins[i].y);
         CTLineDraw(line, ctx);
+        
+        CFArrayRef runs = CTLineGetGlyphRuns(line);
+        CFIndex runsCount = CFArrayGetCount(runs);
+        for (CFIndex runsIndex = 0; runsIndex < runsCount; runsIndex++) {
+            CTRunRef run = CFArrayGetValueAtIndex(runs, runsIndex);
+            CFDictionaryRef attributes = CTRunGetAttributes(run);
+            id <EGOTextAttachmentCell> attachmentCell = [(id)attributes objectForKey: EGOTextAttachmentAttributeName];
+            if (attachmentCell != nil && [attachmentCell respondsToSelector: @selector(attachmentSize)] && [attachmentCell respondsToSelector: @selector(attachmentDrawInRect:)]) {
+                CGPoint position;
+                CTRunGetPositions(run, CFRangeMake(0, 1), &position);
+                
+                CGSize size = [attachmentCell attachmentSize];
+                CGRect rect = { { origins[i].x + position.x, origins[i].y + position.y }, size };
+                
+                UIGraphicsPushContext(UIGraphicsGetCurrentContext());
+                [attachmentCell attachmentDrawInRect: rect];
+                UIGraphicsPopContext();
+            }
+        }
 	}
     free(origins);
     
@@ -572,7 +634,8 @@ typedef enum {
             CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
             CFRange cfRange = CTLineGetStringRange(line);
             NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
-            CFIndex cfIndex = CTLineGetStringIndexForPosition(line, point);
+            CGPoint convertedPoint = CGPointMake(point.x - origins[i].x, point.y - origins[i].y);
+            CFIndex cfIndex = CTLineGetStringIndexForPosition(line, convertedPoint);
             NSInteger index = cfIndex == kCFNotFound ? NSNotFound : cfIndex;
                     
             if(range.location==NSNotFound)
@@ -650,7 +713,8 @@ typedef enum {
     for (int i = 0; i < lines.count; i++) {
         if (point.y > origins[i].y) {
             CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
-            index = CTLineGetStringIndexForPosition(line, point);  
+            CGPoint convertedPoint = CGPointMake(point.x - origins[i].x, point.y - origins[i].y);
+            index = CTLineGetStringIndexForPosition(line, convertedPoint);  
             break;
         }
     }
@@ -677,7 +741,8 @@ typedef enum {
         if (point.y > origins[i].y) {
 
             CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
-            NSInteger index = CTLineGetStringIndexForPosition(line, point);
+            CGPoint convertedPoint = CGPointMake(point.x - origins[i].x, point.y - origins[i].y);
+            NSInteger index = CTLineGetStringIndexForPosition(line, convertedPoint);
            
             CFRange cfRange = CTLineGetStringRange(line);
             NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
@@ -760,7 +825,7 @@ typedef enum {
         free(origins);
         
         origin.y -= self.font.leading;
-        return CGRectMake(xPos, floorf(origin.y - descent), 3, ceilf((descent*2) + ascent));  
+        return CGRectMake(origin.x + xPos, floorf(origin.y - descent), 3, ceilf((descent*2) + ascent));  
         
     }
 
@@ -795,7 +860,7 @@ typedef enum {
 
             }
             
-            returnRect = CGRectMake(xPos,  floorf(origin.y - descent), 3, ceilf((descent*2) + ascent));
+            returnRect = CGRectMake(origin.x + xPos,  floorf(origin.y - descent), 3, ceilf((descent*2) + ascent));
 
         } 
         
@@ -830,7 +895,7 @@ typedef enum {
             CGFloat ascent, descent;
             CTLineGetTypographicBounds(line, &ascent, &descent, NULL);
             
-            returnRect = [_textContentView convertRect:CGRectMake(xStart, origin.y - descent, xEnd - xStart, ascent + (descent*2)) toView:self];
+            returnRect = [_textContentView convertRect:CGRectMake(origin.x + xStart, origin.y - descent, xEnd - xStart, ascent + (descent*2)) toView:self];
             break;
         }
     }
@@ -1473,6 +1538,38 @@ typedef enum {
         self.attributedString = string;
     }
     
+}
+
+- (void)scanAttachments {
+    
+    __block NSMutableAttributedString *mutableAttributedString = nil;
+    
+    [_attributedString enumerateAttribute: EGOTextAttachmentAttributeName inRange: NSMakeRange(0, [_attributedString length]) options: 0 usingBlock: ^(id value, NSRange range, BOOL *stop) {
+        // we only care when an attachment is set
+        if (value != nil) {
+            // create the mutable version of the string if it's not already there
+            if (mutableAttributedString == nil)
+                mutableAttributedString = [_attributedString mutableCopy];
+            
+            CTRunDelegateCallbacks callbacks = {
+                .version = kCTRunDelegateVersion1,
+                .dealloc = AttachmentRunDelegateDealloc,
+                .getAscent = AttachmentRunDelegateGetDescent,
+                //.getDescent = AttachmentRunDelegateGetDescent,
+                .getWidth = AttachmentRunDelegateGetWidth
+            };
+            
+            // the retain here is balanced by the release in the Dealloc function
+            CTRunDelegateRef runDelegate = CTRunDelegateCreate(&callbacks, [value retain]);
+            [mutableAttributedString addAttribute: (NSString *)kCTRunDelegateAttributeName value: (id)runDelegate range:range];
+            CFRelease(runDelegate);
+        }
+    }];
+    
+    if (mutableAttributedString) {
+        [_attributedString release];
+        _attributedString = mutableAttributedString;
+    }
 }
 
 - (BOOL)selectedLinkAtIndex:(NSInteger)index {
