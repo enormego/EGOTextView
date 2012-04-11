@@ -1444,6 +1444,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         [_mutableAttributedString beginEditing];
         [_mutableAttributedString deleteCharactersInRange:self.correctionRange];
         [_mutableAttributedString endEditing];
+        selectedNSRange.location = self.correctionRange.location;
         self.correctionRange = NSMakeRange(NSNotFound, 0);
         selectedNSRange.length = 0;
         
