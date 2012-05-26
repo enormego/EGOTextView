@@ -84,8 +84,8 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
     UIFont              *_font; 
     BOOL                _editing;
     BOOL                _editable; 
-    BOOL                _spellCheck;
-    BOOL                _dataDetectors;
+//    BOOL                _spellCheck;
+//    BOOL                _dataDetectors;
     
     NSRange             _markedRange; 
     NSRange             _selectedRange;
