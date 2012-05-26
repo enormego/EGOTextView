@@ -1156,7 +1156,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     selectedNSRange = NSMakeRange(selectedRange.location + markedTextRange.location, selectedRange.length);
     
-    self.attributedString = _attributedString;
+    self.attributedString = markedText.length == 0 ? _attributedString : _mutableAttributedString;
     self.markedRange = markedTextRange;
     self.selectedRange = selectedNSRange;    
     
