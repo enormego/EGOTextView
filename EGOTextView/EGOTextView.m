@@ -1473,9 +1473,8 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
             [self performSelector:@selector(showCorrectionMenuWithoutSelection) withObject:nil afterDelay:0.2f];
         }
         
-        selectedNSRange.location--;
-        selectedNSRange.length = 1;
-        
+        selectedNSRange = [[_attributedString string] rangeOfComposedCharacterSequenceAtIndex:selectedNSRange.location - 1];
+      
         [_mutableAttributedString beginEditing];
         [_mutableAttributedString deleteCharactersInRange:selectedNSRange];
         [_mutableAttributedString endEditing];
