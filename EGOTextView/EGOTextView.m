@@ -1764,7 +1764,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         } else {
             
             CGPoint location = [gesture locationInView:_textWindow];
-            CGRect rect = CGRectMake(location.x, location.y, _caretView.bounds.size.width, _caretView.bounds.size.height);
+            CGRect rect = CGRectMake(location.x + self.frame.origin.x, location.y - self.frame.origin.y, _caretView.bounds.size.width, _caretView.bounds.size.height);
             
             self.selectedRange = NSMakeRange(index, 0);
             
@@ -2507,8 +2507,8 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
         }
                         
         CGRect frame = _view.frame;
-        frame.origin.x = floorf(pos.x - (_view.bounds.size.width/2));
-        frame.origin.y = floorf(pos.y - _view.bounds.size.height);
+        frame.origin.x = floorf(pos.x - (_view.bounds.size.width/2) - view.superview.frame.origin.x);
+        frame.origin.y = floorf(pos.y - _view.bounds.size.height + view.superview.frame.origin.y);
         
         if (_type==EGOWindowMagnify) {
             
@@ -2643,8 +2643,8 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     if (_showing && _view!=nil) {
         
         CGRect frame = _view.frame;
-        frame.origin.x = floorf((pos.x - (_view.bounds.size.width/2)) + (rect.size.width/2));
-        frame.origin.y = floorf(pos.y - _view.bounds.size.height);
+        frame.origin.x = floorf((pos.x - (_view.bounds.size.width/2)) + (rect.size.width/2) - view.superview.frame.origin.x);
+        frame.origin.y = floorf(pos.y - _view.bounds.size.height + view.superview.frame.origin.y);
 
         if (_type==EGOWindowMagnify) {
             frame.origin.y = MAX(0.0f, frame.origin.y);
