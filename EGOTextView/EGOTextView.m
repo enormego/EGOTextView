@@ -1419,10 +1419,11 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     [newString release];
     
-    self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
-    self.selectedRange = selectedNSRange;  
-        
+    _selectedRange = selectedNSRange;
+    self.attributedString = _mutableAttributedString;
+    [self selectionChanged];
+    
     if (text.length > 1 || ([text isEqualToString:@" "] || [text isEqualToString:@"\n"])) {
         [self checkSpellingForRange:[self characterRangeAtIndex:self.selectedRange.location-1]];
         [self checkLinksForRange:NSMakeRange(0, self.attributedString.length)];
@@ -1484,9 +1485,10 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         
     }
     
-    self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
-    self.selectedRange = selectedNSRange; 
+    _selectedRange = selectedNSRange;
+    self.attributedString = _mutableAttributedString;
+    [self selectionChanged];
     
 }
 
