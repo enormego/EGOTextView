@@ -1486,6 +1486,10 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     }
     
     self.markedRange = markedTextRange;
+    if(selectedNSRange.location > _mutableAttributedString.length) {
+        selectedNSRange.location = _mutableAttributedString.length;
+        selectedNSRange.length = 0;
+    }
     _selectedRange = selectedNSRange;
     self.attributedString = _mutableAttributedString;
     [self selectionChanged];
