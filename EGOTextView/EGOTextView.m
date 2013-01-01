@@ -969,6 +969,9 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         [_textContentView setNeedsDisplay];
     }
     
+    if(_delegateRespondsToDidChangeSelection) {
+        [self.delegate egoTextViewDidChangeSelection:self];
+    }
 }
 
 - (NSRange)markedRange {
