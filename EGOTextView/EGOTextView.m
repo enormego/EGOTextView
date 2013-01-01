@@ -413,6 +413,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     _delegateRespondsToDidChange = [delegate respondsToSelector:@selector(egoTextViewDidChange:)];
     _delegateRespondsToDidChangeSelection = [delegate respondsToSelector:@selector(egoTextViewDidChangeSelection:)];
     _delegateRespondsToDidSelectURL = [delegate respondsToSelector:@selector(egoTextView:didSelectURL:)];
+    _delegateRespondsToTouched = [delegate respondsToSelector:@selector(egoTextViewTouched:)];
     
 }
 
@@ -1701,6 +1702,10 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 }
 
 - (void)longPress:(UILongPressGestureRecognizer*)gesture {
+    if(_delegateRespondsToTouched) {
+        [self.delegate egoTextViewTouched:self];
+    }
+
 
     if (gesture.state==UIGestureRecognizerStateBegan || gesture.state == UIGestureRecognizerStateChanged) {
         
@@ -1810,6 +1815,10 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 }
 
 - (void)doubleTap:(UITapGestureRecognizer*)gesture {
+    if(_delegateRespondsToTouched) {
+        [self.delegate egoTextViewTouched:self];
+    }
+
     
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showMenu) object:nil];
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showCorrectionMenu) object:nil];
@@ -1830,7 +1839,10 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 }
 
 - (void)tap:(UITapGestureRecognizer*)gesture {
-        
+    if(_delegateRespondsToTouched) {
+        [self.delegate egoTextViewTouched:self];
+    }    
+    
     if (_editable && ![self isFirstResponder]) {
         [self becomeFirstResponder];  
         return;
@@ -1876,6 +1888,13 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     [self.inputDelegate selectionDidChange:self];
     
+}
+
+-(void) touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
+    if(_delegateRespondsToTouched) {
+        [self.delegate egoTextViewTouched:self];
+    }
+    [super touchesBegan:touches withEvent:event];
 }
 
 
