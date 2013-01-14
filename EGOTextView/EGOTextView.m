@@ -1871,13 +1871,13 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         
     } else {
         
-        if (index==self.selectedRange.location) {
-            [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.35f];
-        } else {
-            if (_editing) {
-                [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.35f];
-            }
-        }
+//        if (index==self.selectedRange.location) {
+//            [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.35f];
+//        } else {
+//            if (_editing) {
+//                [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.35f];
+//            }
+//        }
         
     }
     
