@@ -1861,6 +1861,10 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         index = [self closestWhiteSpaceIndexToPoint:[gesture locationInView:self]];
     } else {
         index = 0;
+        self.markedRange = NSMakeRange(0, 0);
+        self.selectedRange = NSMakeRange(index, 0);
+        return;
+
     }
     
     if (_delegateRespondsToDidSelectURL && !_editing) {
