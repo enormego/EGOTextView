@@ -1888,11 +1888,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     [self.inputDelegate selectionWillChange:self];
     
-    if(gesture) {
-        self.markedRange = NSMakeRange(NSNotFound, 0);
-    } else {
-        self.markedRange = NSMakeRange(0, 0);
-    }
+    self.markedRange = NSMakeRange(NSNotFound, 0);
     self.selectedRange = NSMakeRange(index, 0);
     
     [self.inputDelegate selectionDidChange:self];
