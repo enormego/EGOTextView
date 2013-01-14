@@ -413,6 +413,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     _delegateRespondsToDidChange = [delegate respondsToSelector:@selector(egoTextViewDidChange:)];
     _delegateRespondsToDidChangeSelection = [delegate respondsToSelector:@selector(egoTextViewDidChangeSelection:)];
     _delegateRespondsToDidSelectURL = [delegate respondsToSelector:@selector(egoTextView:didSelectURL:)];
+    _delegateRespondsToTouched = [delegate respondsToSelector:@selector(egoTextViewTouched:)];
     
 }
 
@@ -969,6 +970,9 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         [_textContentView setNeedsDisplay];
     }
     
+    if(_delegateRespondsToDidChangeSelection) {
+        [self.delegate egoTextViewDidChangeSelection:self];
+    }
 }
 
 - (NSRange)markedRange {
@@ -1419,10 +1423,11 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     [newString release];
     
-    self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
-    self.selectedRange = selectedNSRange;  
-        
+    _selectedRange = selectedNSRange;
+    self.attributedString = _mutableAttributedString;
+    [self selectionChanged];
+    
     if (text.length > 1 || ([text isEqualToString:@" "] || [text isEqualToString:@"\n"])) {
         [self checkSpellingForRange:[self characterRangeAtIndex:self.selectedRange.location-1]];
         [self checkLinksForRange:NSMakeRange(0, self.attributedString.length)];
@@ -1484,9 +1489,14 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         
     }
     
-    self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
-    self.selectedRange = selectedNSRange; 
+    if(selectedNSRange.location > _mutableAttributedString.length) {
+        selectedNSRange.location = _mutableAttributedString.length;
+        selectedNSRange.length = 0;
+    }
+    _selectedRange = selectedNSRange;
+    self.attributedString = _mutableAttributedString;
+    [self selectionChanged];
     
 }
 
@@ -1692,6 +1702,10 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 }
 
 - (void)longPress:(UILongPressGestureRecognizer*)gesture {
+    if(_delegateRespondsToTouched) {
+        [self.delegate egoTextViewTouched:self];
+    }
+
 
     if (gesture.state==UIGestureRecognizerStateBegan || gesture.state == UIGestureRecognizerStateChanged) {
         
@@ -1764,7 +1778,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         } else {
             
             CGPoint location = [gesture locationInView:_textWindow];
-            CGRect rect = CGRectMake(location.x, location.y, _caretView.bounds.size.width, _caretView.bounds.size.height);
+            CGRect rect = CGRectMake(location.x + self.frame.origin.x, location.y - self.frame.origin.y, _caretView.bounds.size.width, _caretView.bounds.size.height);
             
             self.selectedRange = NSMakeRange(index, 0);
             
@@ -1801,6 +1815,10 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 }
 
 - (void)doubleTap:(UITapGestureRecognizer*)gesture {
+    if(_delegateRespondsToTouched) {
+        [self.delegate egoTextViewTouched:self];
+    }
+
     
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showMenu) object:nil];
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showCorrectionMenu) object:nil];
@@ -1821,7 +1839,10 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 }
 
 - (void)tap:(UITapGestureRecognizer*)gesture {
-        
+    if(_delegateRespondsToTouched) {
+        [self.delegate egoTextViewTouched:self];
+    }    
+    
     if (_editable && ![self isFirstResponder]) {
         [self becomeFirstResponder];  
         return;
@@ -1835,7 +1856,12 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         self.selectedRange = NSMakeRange(_selectedRange.location, 0);
     }
     
-    NSInteger index = [self closestWhiteSpaceIndexToPoint:[gesture locationInView:self]];
+    NSInteger index;
+    if(gesture) {
+        index = [self closestWhiteSpaceIndexToPoint:[gesture locationInView:self]];
+    } else {
+        index = 0;
+    }
     
     if (_delegateRespondsToDidSelectURL && !_editing) {
         if ([self selectedLinkAtIndex:index]) {
@@ -1850,13 +1876,13 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         
     } else {
         
-        if (index==self.selectedRange.location) {
-            [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.35f];
-        } else {
-            if (_editing) {
-                [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.35f];
-            }
-        }
+//        if (index==self.selectedRange.location) {
+//            [self performSelector:@selector(showMenu) withObject:nil afterDelay:0.35f];
+//        } else {
+//            if (_editing) {
+//                [self performSelector:@selector(showCorrectionMenu) withObject:nil afterDelay:0.35f];
+//            }
+//        }
         
     }
     
@@ -1867,6 +1893,13 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     [self.inputDelegate selectionDidChange:self];
     
+}
+
+-(void) touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
+    if(_delegateRespondsToTouched) {
+        [self.delegate egoTextViewTouched:self];
+    }
+    [super touchesBegan:touches withEvent:event];
 }
 
 
@@ -2507,8 +2540,8 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
         }
                         
         CGRect frame = _view.frame;
-        frame.origin.x = floorf(pos.x - (_view.bounds.size.width/2));
-        frame.origin.y = floorf(pos.y - _view.bounds.size.height);
+        frame.origin.x = floorf(pos.x - (_view.bounds.size.width/2) - view.superview.frame.origin.x);
+        frame.origin.y = floorf(pos.y - _view.bounds.size.height + view.superview.frame.origin.y);
         
         if (_type==EGOWindowMagnify) {
             
@@ -2643,8 +2676,8 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     if (_showing && _view!=nil) {
         
         CGRect frame = _view.frame;
-        frame.origin.x = floorf((pos.x - (_view.bounds.size.width/2)) + (rect.size.width/2));
-        frame.origin.y = floorf(pos.y - _view.bounds.size.height);
+        frame.origin.x = floorf((pos.x - (_view.bounds.size.width/2)) + (rect.size.width/2) - view.superview.frame.origin.x);
+        frame.origin.y = floorf(pos.y - _view.bounds.size.height + view.superview.frame.origin.y);
 
         if (_type==EGOWindowMagnify) {
             frame.origin.y = MAX(0.0f, frame.origin.y);

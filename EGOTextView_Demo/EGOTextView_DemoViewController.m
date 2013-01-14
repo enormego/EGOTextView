@@ -103,6 +103,14 @@
 
 }
 
+- (void)egoTextViewDidChangeSelection:(EGOTextView*)textView {
+    NSLog(@"%s", __PRETTY_FUNCTION__);
+}
+
+- (void)egoTextViewTouched:(EGOTextView*)textView {
+    NSLog(@"%s", __PRETTY_FUNCTION__);
+}
+
 - (void)egoTextView:(EGOTextView*)textView didSelectURL:(NSURL *)URL {
         
 }
