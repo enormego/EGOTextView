@@ -124,5 +124,6 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 @property(nonatomic) NSRange markedRange;
 
 - (BOOL)hasText;
+- (void)tap:(UITapGestureRecognizer*)gesture;
 
 @end
