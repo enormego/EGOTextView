@@ -66,7 +66,7 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 @private
     NSMutableAttributedString          *_mutableAttributedString;
     NSDictionary                       *_markedTextStyle;
-    id <UITextInputDelegate>           _inputDelegate;
+    __unsafe_unretained id <UITextInputDelegate>           _inputDelegate;
     UITextInputStringTokenizer         *_tokenizer;
     UITextChecker                      *_textChecker;
     UILongPressGestureRecognizer       *_longPress;
@@ -84,8 +84,7 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
     UIFont              *_font; 
     BOOL                _editing;
     BOOL                _editable; 
-    BOOL                _spellCheck;
-    BOOL                _dataDetectors;
+    
     
     NSRange             _markedRange; 
     NSRange             _selectedRange;
@@ -112,10 +111,10 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 @property(nonatomic) UIReturnKeyType returnKeyType;                    
 @property(nonatomic) BOOL enablesReturnKeyAutomatically; 
 
-@property(nonatomic,assign) id <EGOTextViewDelegate> delegate;
+@property(nonatomic,unsafe_unretained) id <EGOTextViewDelegate> delegate;
 @property(nonatomic,copy) NSAttributedString *attributedString;
 @property(nonatomic,copy) NSString *text;
-@property(nonatomic,retain) UIFont *font; // ignored when attributedString is not nil
+@property(nonatomic,strong) UIFont *font; // ignored when attributedString is not nil
 @property(nonatomic,getter=isEditable) BOOL editable; //default YES
 @property(nonatomic) NSRange selectedRange;
 @property(nonatomic) NSRange markedRange;

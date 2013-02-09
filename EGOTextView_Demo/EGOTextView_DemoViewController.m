@@ -26,7 +26,6 @@
     segment.segmentedControlStyle = UISegmentedControlStyleBar;
     [segment addTarget:self action:@selector(segmentChanged:) forControlEvents:UIControlEventValueChanged];
     self.navigationItem.titleView = segment;
-    [segment release];
     
     if (_textView==nil) {
         
@@ -35,7 +34,6 @@
         textView.font = self.egoTextView.font;
         [self.view addSubview:textView];
         self.textView = textView;
-        [textView release];
         
     }
     
@@ -46,7 +44,6 @@
         view.delegate = (id<EGOTextViewDelegate>)self;
         [self.view addSubview:view];
         self.egoTextView = view;
-        [view release];  
         [view becomeFirstResponder];
         
     }
@@ -117,14 +114,13 @@
 
 - (void)viewDidUnload {
     [super viewDidUnload];
-    [_textView release], _textView=nil;
-    [_egoTextView release], _egoTextView=nil;
+    _textView=nil;
+    _egoTextView=nil;
 }
 
 - (void)dealloc {
-    [_textView release], _textView=nil;
-    [_egoTextView release], _egoTextView=nil;
-    [super dealloc];
+    _textView=nil;
+    _egoTextView=nil;
 }
 
 

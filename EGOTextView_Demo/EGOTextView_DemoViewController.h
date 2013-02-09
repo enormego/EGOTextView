@@ -16,7 +16,7 @@
     
 }
 
-@property(nonatomic,retain) EGOTextView *egoTextView;
-@property(nonatomic,retain) UITextView *textView;
+@property(nonatomic,strong) EGOTextView *egoTextView;
+@property(nonatomic,strong) UITextView *textView;
 
 @end
