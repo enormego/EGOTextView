@@ -116,6 +116,7 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 @property(nonatomic,copy) NSAttributedString *attributedString;
 @property(nonatomic,copy) NSString *text;
 @property(nonatomic,retain) UIFont *font; // ignored when attributedString is not nil
+@property(nonatomic,retain) UIColor *textColor;
 @property(nonatomic,getter=isEditable) BOOL editable; //default YES
 @property(nonatomic) NSRange selectedRange;
 @property(nonatomic) NSRange markedRange;

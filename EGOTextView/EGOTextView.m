@@ -194,6 +194,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 @synthesize attributedString=_attributedString;
 @synthesize text=_text;
 @synthesize font=_font;
+@synthesize textColor=_textColor;
 @synthesize editable=_editable;
 @synthesize markedRange=_markedRange;
 @synthesize selectedRange=_selectedRange;
@@ -268,6 +269,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     _textWindow=nil;
     [_font release], _font=nil;
+    [_textColor release], _textColor = nil;
     [_attributedString release], _attributedString=nil;
     [_caretView release], _caretView=nil;
     self.menuItemActions=nil;
@@ -353,20 +355,40 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     return _attributedString.string;
 }
 
+-(void)buildDefaultAttributes
+{
+    CTFontRef ctFont = CTFontCreateWithName((CFStringRef) self.font.fontName, self.font.pointSize, NULL);
+    NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:(id)ctFont, (NSString *)kCTFontAttributeName, (id)self.textColor.CGColor, kCTForegroundColorAttributeName, nil];
+    self.defaultAttributes = dictionary;
+    [dictionary release];
+    CFRelease(ctFont);
+    
+    [self textChanged];
+}
+
+-(void)setTextColor:(UIColor *)textColor
+{
+    UIColor *oldTextColor = _textColor;
+    _textColor = [textColor retain];
+    [oldTextColor release];
+    
+    [self buildDefaultAttributes];
+}
+
 - (void)setFont:(UIFont *)font {
     
     UIFont *oldFont = _font;
     _font = [font retain];
     [oldFont release];
     
-    CTFontRef ctFont = CTFontCreateWithName((CFStringRef) self.font.fontName, self.font.pointSize, NULL);  
-    NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:(id)ctFont, (NSString *)kCTFontAttributeName, (id)[UIColor blackColor].CGColor, kCTForegroundColorAttributeName, nil];
-    self.defaultAttributes = dictionary;
-    [dictionary release];
-    CFRelease(ctFont);        
+    [self buildDefaultAttributes];
+}
+
+-(void)setBackgroundColor:(UIColor *)backgroundColor
+{
+    [super setBackgroundColor:backgroundColor];
     
-    [self textChanged];
-    
+    self.textInputView.backgroundColor = backgroundColor;
 }
 
 - (void)setText:(NSString *)text {
