@@ -384,7 +384,9 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 - (void)setAttributedString:(NSAttributedString*)string {
 
     NSAttributedString *aString = _attributedString;
-    _attributedString = [string copy];
+    _mutableAttributedString = [[NSMutableAttributedString alloc] initWithAttributedString:string];
+
+    _attributedString = _mutableAttributedString;
     [aString release], aString = nil;
     
     NSRange range = NSMakeRange(0, _attributedString.string.length);
@@ -1109,6 +1111,12 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     self.attributedString = _mutableAttributedString;
     self.selectedRange = selectedNSRange;
     
+}
+
+- (void)replaceNSRange:(NSRange)range withText:(NSString *)text
+{
+    UITextRange *r = [EGOIndexedRange rangeWithNSRange:range];
+    [self replaceRange:r withText:text];
 }
 
 // MARK: UITextInput - Working with Marked and Selected Text

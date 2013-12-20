@@ -121,5 +121,6 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 @property(nonatomic) NSRange markedRange;
 
 - (BOOL)hasText;
+- (void)replaceNSRange:(NSRange)range withText:(NSString *)text;
 
 @end
