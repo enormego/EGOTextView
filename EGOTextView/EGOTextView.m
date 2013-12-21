@@ -375,6 +375,8 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
     NSAttributedString *string = [[NSAttributedString alloc] initWithString:text attributes:self.defaultAttributes];
     [self setAttributedString:string];
+    _mutableAttributedString = [[NSMutableAttributedString alloc] initWithAttributedString:string];
+
     [string release];
     
     [self.inputDelegate textDidChange:self];       
@@ -384,9 +386,8 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 - (void)setAttributedString:(NSAttributedString*)string {
 
     NSAttributedString *aString = _attributedString;
-    _mutableAttributedString = [[NSMutableAttributedString alloc] initWithAttributedString:string];
 
-    _attributedString = _mutableAttributedString;
+    _attributedString = [string copy];
     [aString release], aString = nil;
     
     NSRange range = NSMakeRange(0, _attributedString.string.length);
@@ -1164,7 +1165,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     selectedNSRange = NSMakeRange(selectedRange.location + markedTextRange.location, selectedRange.length);
     
-    self.attributedString = _attributedString;
+    self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
     self.selectedRange = selectedNSRange;    
     

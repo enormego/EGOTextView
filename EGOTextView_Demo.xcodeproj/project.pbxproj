@@ -190,6 +190,8 @@
 /* Begin PBXProject section */
 		03FF5EBE135CA49D00268656 /* Project object */ = {
 			isa = PBXProject;
+			attributes = {
+			};
 			buildConfigurationList = 03FF5EC1135CA49D00268656 /* Build configuration list for PBXProject "EGOTextView_Demo" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
@@ -319,6 +321,7 @@
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "EGOTextView_Demo/EGOTextView_Demo-Prefix.pch";
+				GCC_VERSION = "";
 				INFOPLIST_FILE = "EGOTextView_Demo/EGOTextView_Demo-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 5.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -334,6 +337,7 @@
 				COPY_PHASE_STRIP = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "EGOTextView_Demo/EGOTextView_Demo-Prefix.pch";
+				GCC_VERSION = "";
 				INFOPLIST_FILE = "EGOTextView_Demo/EGOTextView_Demo-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 5.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
