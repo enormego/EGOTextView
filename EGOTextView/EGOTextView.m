@@ -844,7 +844,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
         CTLineRef line = (CTLineRef)[lines objectAtIndex:i];
         CFRange cfRange = CTLineGetStringRange(line);
-        NSRange range = NSMakeRange(range.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
+        NSRange range = NSMakeRange(cfRange.location == kCFNotFound ? NSNotFound : cfRange.location, cfRange.length);
                 
         if (index >= range.location && index <= range.location+range.length) {
 
