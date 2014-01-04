@@ -975,10 +975,19 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 }
 
 - (NSRange)markedRange {
+    if (_markedRange.location > _mutableAttributedString.length)
+        _markedRange.location = _mutableAttributedString.length;
+    if (_markedRange.location + _markedRange.length > _mutableAttributedString.length)
+        _markedRange.length = _mutableAttributedString.length - _markedRange.location;
     return _markedRange;
 }
 
 - (NSRange)selectedRange {
+    if (_selectedRange.location > _mutableAttributedString.length)
+        _selectedRange.location = _mutableAttributedString.length;
+    if (_selectedRange.location + _selectedRange.length > _mutableAttributedString.length)
+        _selectedRange.length = _mutableAttributedString.length - _selectedRange.length;
+
     return _selectedRange;
 }
 
@@ -1484,13 +1493,12 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         
         selectedNSRange.location--;
         selectedNSRange.length = 1;
-        
+
         [_mutableAttributedString beginEditing];
         [_mutableAttributedString deleteCharactersInRange:selectedNSRange];
         [_mutableAttributedString endEditing];
         
         selectedNSRange.length = 0;
-        
     }
     
     self.attributedString = _mutableAttributedString;
