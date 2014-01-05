@@ -974,20 +974,21 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
 }
 
+- (NSRange)checkRange:(NSRange)r
+{
+    if (r.location == NSNotFound) return r;
+    if (r.location > self.attributedString.length)
+        r.location = self.attributedString.length;
+    if (r.location + r.length > self.attributedString.length)
+        r.length = self.attributedString.length - r.location;
+    return r;
+}
+
 - (NSRange)markedRange {
-    if (_markedRange.location > _mutableAttributedString.length)
-        _markedRange.location = _mutableAttributedString.length;
-    if (_markedRange.location + _markedRange.length > _mutableAttributedString.length)
-        _markedRange.length = _mutableAttributedString.length - _markedRange.location;
     return _markedRange;
 }
 
 - (NSRange)selectedRange {
-    if (_selectedRange.location > _mutableAttributedString.length)
-        _selectedRange.location = _mutableAttributedString.length;
-    if (_selectedRange.location + _selectedRange.length > _mutableAttributedString.length)
-        _selectedRange.length = _mutableAttributedString.length - _selectedRange.length;
-
     return _selectedRange;
 }
 
@@ -998,6 +999,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
 - (void)setSelectedRange:(NSRange)range {
     _selectedRange = NSMakeRange(range.location == NSNotFound ? NSNotFound : MAX(0, range.location), range.length);
+    _selectedRange = [self checkRange:_selectedRange];
     [self selectionChanged];
 }
 
@@ -1103,7 +1105,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
 - (NSString *)textInRange:(UITextRange *)range {
     EGOIndexedRange *r = (EGOIndexedRange *)range;
-    return ([_attributedString.string substringWithRange:r.range]);
+    return ([self.attributedString.string substringWithRange:[self checkRange:r.range]]);
 }
 
 - (void)replaceRange:(UITextRange *)range withText:(NSString *)text {
@@ -1111,12 +1113,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     EGOIndexedRange *r = (EGOIndexedRange *)range;
 
     NSRange selectedNSRange = self.selectedRange;
-    if ((r.range.location + r.range.length) <= selectedNSRange.location) {
-        selectedNSRange.location -= (r.range.length - text.length);
-    } else {
-        selectedNSRange = [self rangeIntersection:r.range withSecond:_selectedRange];
-    }
-    
     [_mutableAttributedString replaceCharactersInRange:r.range withString:text];        
     self.attributedString = _mutableAttributedString;
     self.selectedRange = selectedNSRange;
@@ -1452,11 +1448,10 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(showCorrectionMenuWithoutSelection) object:nil];
     
-    NSRange selectedNSRange = self.selectedRange;
-    NSRange markedTextRange = self.markedRange;
-    
     [_mutableAttributedString setAttributedString:self.attributedString];
-
+    NSRange selectedNSRange = [self checkRange:self.selectedRange];
+    NSRange markedTextRange = [self checkRange:self.markedRange];;
+    
     if (_correctionRange.location != NSNotFound && _correctionRange.length > 0) {
         
         [_mutableAttributedString beginEditing];
@@ -2245,7 +2240,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
 - (void)cut:(id)sender {
     
-    NSString *string = [_attributedString.string substringWithRange:_selectedRange];
+    NSString *string = [self.attributedString.string substringWithRange:self.selectedRange];
     [[UIPasteboard generalPasteboard] setValue:string forPasteboardType:@"public.utf8-plain-text"];
     
     [_mutableAttributedString setAttributedString:self.attributedString];
@@ -2261,7 +2256,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
 - (void)copy:(id)sender {
     
-    NSString *string = [self.attributedString.string substringWithRange:_selectedRange];
+    NSString *string = [self.attributedString.string substringWithRange:self.selectedRange];
     [[UIPasteboard generalPasteboard] setValue:string forPasteboardType:@"public.utf8-plain-text"];
     
 }
