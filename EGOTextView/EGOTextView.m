@@ -993,7 +993,8 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 }
 
 - (void)setMarkedRange:(NSRange)range {    
-    _markedRange = range;
+    _markedRange = NSMakeRange(range.location == NSNotFound ? NSNotFound : MAX(0, range.location), range.length);
+    _markedRange = [self checkRange:_markedRange];
     //[self selectionChanged];
 }
 
@@ -1399,11 +1400,9 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     NSRange selectedNSRange = self.selectedRange;
     NSRange markedTextRange = self.markedRange;
-    
     [_mutableAttributedString setAttributedString:self.attributedString];
-    
     NSAttributedString *newString = [[NSAttributedString alloc] initWithString:text attributes:self.defaultAttributes];
-    
+
     if (_correctionRange.location != NSNotFound && _correctionRange.length > 0){
         
         [_mutableAttributedString replaceCharactersInRange:self.correctionRange withAttributedString:newString];
@@ -1441,7 +1440,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         [self checkSpellingForRange:[self characterRangeAtIndex:self.selectedRange.location-1]];
         [self checkLinksForRange:NSMakeRange(0, self.attributedString.length)];
     }
-  
 }
 
 - (void)deleteBackward  {
@@ -1451,9 +1449,12 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     [_mutableAttributedString setAttributedString:self.attributedString];
     NSRange selectedNSRange = [self checkRange:self.selectedRange];
     NSRange markedTextRange = [self checkRange:self.markedRange];;
-    
+
+    if ((_correctionRange.location > selectedNSRange.location + selectedNSRange.length) || (selectedNSRange.location > _correctionRange.location + _correctionRange.length)) {
+        _correctionRange.location = NSNotFound;
+        _correctionRange.length = 0;
+    }
     if (_correctionRange.location != NSNotFound && _correctionRange.length > 0) {
-        
         [_mutableAttributedString beginEditing];
         [_mutableAttributedString deleteCharactersInRange:self.correctionRange];
         [_mutableAttributedString endEditing];
@@ -1461,17 +1462,15 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         selectedNSRange.length = 0;
         
     } else if (markedTextRange.location != NSNotFound) {
-        
         [_mutableAttributedString beginEditing];
         [_mutableAttributedString deleteCharactersInRange:selectedNSRange];
         [_mutableAttributedString endEditing];
         
-        selectedNSRange.location = markedTextRange.location;
+        //selectedNSRange.location = markedTextRange.location;
         selectedNSRange.length = 0;
         markedTextRange = NSMakeRange(NSNotFound, 0);
         
     } else if (selectedNSRange.length > 0) {
-        
         [_mutableAttributedString beginEditing];
         [_mutableAttributedString deleteCharactersInRange:selectedNSRange];
         [_mutableAttributedString endEditing];
@@ -1479,7 +1478,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         selectedNSRange.length = 0;
         
     } else if (selectedNSRange.location > 0) {
-        
         NSInteger index = MAX(0, selectedNSRange.location-1);
         index = MIN(_attributedString.length-1, index);
         if ([_attributedString.string characterAtIndex:index] == ' ') {
@@ -1498,8 +1496,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
-    self.selectedRange = selectedNSRange; 
-    
+    self.selectedRange = selectedNSRange;
 }
 
 
