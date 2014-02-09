@@ -447,25 +447,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 // MARK: Layout methods
 /////////////////////////////////////////////////////////////////////////////
 
-- (NSRange)rangeIntersection:(NSRange)first withSecond:(NSRange)second {
-
-    NSRange result = NSMakeRange(NSNotFound, 0);
-    
-    if (first.location > second.location) {
-        NSRange tmp = first;
-        first = second;
-        second = tmp;
-    }
-    
-    if (second.location < first.location + first.length) {
-        result.location = second.location;
-        NSUInteger end = MIN(first.location + first.length, second.location + second.length);
-        result.length = end - result.location;
-    }
-    
-    return result;    
-}
-
 - (void)drawPathFromRects:(NSArray*)array cornerRadius:(CGFloat)cornerRadius {
     
     if (array==nil || [array count] == 0) return;
@@ -529,7 +510,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         CTLineRef line = (__bridge CTLineRef) [lines objectAtIndex:i];
         CFRange lineRange = CTLineGetStringRange(line);
         NSRange range = NSMakeRange(lineRange.location==kCFNotFound ? NSNotFound : lineRange.location, lineRange.length);
-        NSRange intersection = [self rangeIntersection:range withSecond:selectionRange];
+        NSRange intersection = NSIntersectionRange(range, selectionRange);
         
         if (intersection.location != NSNotFound && intersection.length > 0) {
 
@@ -1085,7 +1066,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     if ((r.range.location + r.range.length) <= selectedNSRange.location) {
         selectedNSRange.location -= (r.range.length - text.length);
     } else {
-        selectedNSRange = [self rangeIntersection:r.range withSecond:_selectedRange];
+        selectedNSRange = NSIntersectionRange(r.range, _selectedRange);
     }
     
     [_mutableAttributedString replaceCharactersInRange:r.range withString:text];        
@@ -1454,8 +1435,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         if ([_attributedString.string characterAtIndex:index] == ' ') {
             [self performSelector:@selector(showCorrectionMenuWithoutSelection) withObject:nil afterDelay:0.2f];
         }
-        
-        
+                
         
         selectedNSRange = [[_attributedString string] rangeOfComposedCharacterSequenceAtIndex:selectedNSRange.location - 1];
         
@@ -2213,9 +2193,10 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     [self.inputDelegate textWillChange:self];       
     [self setAttributedString:_mutableAttributedString];
-    [self.inputDelegate textDidChange:self];       
-    
     self.selectedRange = NSMakeRange(_selectedRange.location, 0);
+
+    [self.inputDelegate textDidChange:self];
+    
     
 }
 
