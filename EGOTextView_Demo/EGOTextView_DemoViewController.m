@@ -29,7 +29,7 @@
     
     if (_textView==nil) {
         
-        UITextView *textView = [[UITextView alloc] initWithFrame:self.view.bounds];
+        UITextView *textView = [[UITextView alloc] initWithFrame:CGRectMake(0, 0, 320, 200)];
         textView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         textView.font = self.egoTextView.font;
         [self.view addSubview:textView];
@@ -39,7 +39,7 @@
     
     if (_egoTextView==nil) {
         
-        EGOTextView *view = [[EGOTextView alloc] initWithFrame:self.view.bounds];
+        EGOTextView *view = [[EGOTextView alloc] initWithFrame:CGRectMake(0, 0, 320, 200)];
         view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         view.delegate = (id<EGOTextViewDelegate>)self;
         [self.view addSubview:view];

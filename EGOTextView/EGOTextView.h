@@ -45,8 +45,6 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 
 - (void)egoTextViewDidChangeSelection:(EGOTextView *)textView;
 
-- (void)egoTextView:(EGOTextView*)textView didSelectURL:(NSURL*)URL;
-
 @end
 
 @protocol EGOTextAttachmentCell <NSObject>
@@ -83,13 +81,11 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
     NSAttributedString  *_attributedString;
     UIFont              *_font; 
     BOOL                _editing;
-    BOOL                _editable; 
     
     
     NSRange             _markedRange; 
     NSRange             _selectedRange;
     NSRange             _correctionRange;
-    NSRange             _linkRange;
 
     CTFramesetterRef    _framesetter;
     CTFrameRef          _frame;

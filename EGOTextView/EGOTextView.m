@@ -169,7 +169,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 - (void)removeCorrectionAttributesForRange:(NSRange)range;
 - (void)insertCorrectionAttributesForRange:(NSRange)range;
 - (void)showCorrectionMenuForRange:(NSRange)range;
-- (void)checkLinksForRange:(NSRange)range;
 - (void)scanAttachments;
 - (void)showMenu;
 - (CGRect)menuPresentationRect;
@@ -216,6 +215,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 - (void)commonInit {
     [self setText:@""];
     self.alwaysBounceVertical = YES;
+    self.autoresizesSubviews = YES;
     self.editable = YES;
     self.font = [UIFont systemFontOfSize:17];
     self.backgroundColor = [UIColor whiteColor];
@@ -223,6 +223,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     self.clipsToBounds = YES;
     
     EGOContentView *contentView = [[EGOContentView alloc] initWithFrame:CGRectInset(self.bounds, 8.0f, 8.0f)];
+  
     contentView.autoresizingMask = self.autoresizingMask;
     contentView.delegate = self;
     [self addSubview:contentView];
@@ -297,10 +298,10 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
 - (void)textChanged {
     
-    if ([[UIMenuController sharedMenuController] isMenuVisible]) {
+    if ([[UIMenuController sharedMenuController] isMenuVisible] && self.correctionRange.location == NSNotFound) {
         [[UIMenuController sharedMenuController] setMenuVisible:NO animated:NO];
     }
-           
+    
     CTFramesetterRef framesetter = _framesetter;
     _framesetter = CTFramesetterCreateWithAttributedString((__bridge CFAttributedStringRef)self.attributedString);
     if (framesetter!=NULL) {
@@ -374,9 +375,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
     _attributedString = [string copy];
     
-    NSRange range = NSMakeRange(0, _attributedString.string.length);
     if (!_editing && !_editable) {
-        [self checkLinksForRange:range];
         [self scanAttachments];
     }
     
@@ -399,7 +398,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     _delegateRespondsToDidEndEditing = [delegate respondsToSelector:@selector(egoTextViewDidEndEditing:)];
     _delegateRespondsToDidChange = [delegate respondsToSelector:@selector(egoTextViewDidChange:)];
     _delegateRespondsToDidChangeSelection = [delegate respondsToSelector:@selector(egoTextViewDidChangeSelection:)];
-    _delegateRespondsToDidSelectURL = [delegate respondsToSelector:@selector(egoTextView:didSelectURL:)];
     
 }
 
@@ -524,7 +522,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
             CGRect selectionRect = CGRectMake(origin.x + xStart, origin.y - descent, xEnd - xStart, ascent + descent); 
             
             if (range.length==1) {
-                selectionRect.size.width = _textContentView.bounds.size.width;
+                //selectionRect.size.width = _textContentView.bounds.size.width;
             }
             
             [pathRects addObject:NSStringFromCGRect(selectionRect)];
@@ -537,15 +535,15 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
 }
 
-- (void)drawContentInRect:(CGRect)rect {    
-
+- (void)drawContentInRect:(CGRect)rect {
+    
     [[UIColor colorWithRed:0.8f green:0.8f blue:0.8f alpha:1.0f] setFill];
-    [self drawBoundingRangeAsSelection:_linkRange cornerRadius:2.0f];
     [[EGOTextView selectionColor] setFill];
     [self drawBoundingRangeAsSelection:self.selectedRange cornerRadius:0.0f];
+    [self drawBoundingRangeAsSelection:self.markedRange cornerRadius:0.0f];
+
     [[EGOTextView spellingSelectionColor] setFill];
     [self drawBoundingRangeAsSelection:self.correctionRange cornerRadius:2.0f];
-    [self drawBoundingRangeAsSelection:self.markedRange cornerRadius:0.0f];
 	CGPathRef framePath = CTFrameGetPath(_frame);
 	CGRect frameRect = CGPathGetBoundingBox(framePath);
         
@@ -985,40 +983,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
 }
 
-- (void)setLinkRange:(NSRange)range {
-    
-    _linkRange = range;
-    
-    if (_linkRange.length>0) {
-        
-        if (_caretView.superview!=nil) {
-            [_caretView removeFromSuperview];
-        }
-        
-    } else {
-        
-        if (_caretView.superview==nil) {
-            if (!_caretView.superview) {
-                [_textContentView addSubview:_caretView];
-                _caretView.frame = [self caretRectForIndex:self.selectedRange.location];
-                [_caretView delayBlink];
-            }
-        }
-        
-    }
-    
-    [_textContentView setNeedsDisplay];
 
-}
-
-- (void)setLinkRangeFromTextCheckerResults:(NSTextCheckingResult*)results {
-            
-    if (_linkRange.length>0) {
-        UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:[[results URL] absoluteString] delegate:(id<UIActionSheetDelegate>)self cancelButtonTitle:@"Cancel" destructiveButtonTitle:nil otherButtonTitles:@"Open", nil];
-        [actionSheet showInView:self];
-    }
-    
-}
 
 + (UIColor*)selectionColor {
     static UIColor *color = nil;
@@ -1120,7 +1085,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     selectedNSRange = NSMakeRange(selectedRange.location + markedTextRange.location, selectedRange.length);
     
     //self.attributedString = _attributedString;
-    self.attributedString = markedText.length == 0 ? _attributedString : _mutableAttributedString;
+    self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
     self.selectedRange = selectedNSRange;    
     
@@ -1288,9 +1253,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 	return [self caretRectForIndex:pos.index];    
 }
 
-- (UIView *)textInputView {
-    return _textContentView;
-}
+
 
 // MARK: UITextInput - Hit testing
 
@@ -1388,7 +1351,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         
     if (text.length > 1 || ([text isEqualToString:@" "] || [text isEqualToString:@"\n"])) {
         [self checkSpellingForRange:[self characterRangeAtIndex:self.selectedRange.location-1]];
-        [self checkLinksForRange:NSMakeRange(0, self.attributedString.length)];
     }
   
 }
@@ -1407,6 +1369,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         [_mutableAttributedString beginEditing];
         [_mutableAttributedString deleteCharactersInRange:self.correctionRange];
         [_mutableAttributedString endEditing];
+        selectedNSRange.location = self.correctionRange.location;
         self.correctionRange = NSMakeRange(NSNotFound, 0);
         selectedNSRange.length = 0;
         
@@ -1454,55 +1417,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 }
 
 
-/////////////////////////////////////////////////////////////////////////////
-// MARK: -
-// MARK: Data Detectors (links)
-/////////////////////////////////////////////////////////////////////////////
-
-- (NSTextCheckingResult*)linkAtIndex:(NSInteger)index {
-    
-    NSRange range = [self characterRangeAtIndex:index];
-    if (range.location==NSNotFound || range.length == 0) {
-        return nil;
-    }
-    
-    __block NSTextCheckingResult *link = nil;
-    NSError *error = nil;
-    NSDataDetector *linkDetector = [NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink error:&error];
-    [linkDetector enumerateMatchesInString:[self.attributedString string] options:0 range:range usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
-        
-        if ([result resultType] == NSTextCheckingTypeLink) {
-            *stop = YES;
-            link = result;
-        }
-        
-    }];
-
-    return link;
-    
-}
-
-- (void)checkLinksForRange:(NSRange)range {
-    
-    NSDictionary *linkAttributes = [NSDictionary dictionaryWithObjectsAndKeys:(id)[UIColor blueColor].CGColor, kCTForegroundColorAttributeName, [NSNumber numberWithInt:(int)kCTUnderlineStyleSingle], kCTUnderlineStyleAttributeName, nil];
-    
-    NSMutableAttributedString *string = [_attributedString mutableCopy];
-    NSError *error = nil;
-	NSDataDetector *linkDetector = [NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink error:&error];
-	[linkDetector enumerateMatchesInString:[string string] options:0 range:range usingBlock:^(NSTextCheckingResult *result, NSMatchingFlags flags, BOOL *stop) {
-
-        if ([result resultType] == NSTextCheckingTypeLink) {
-            [string addAttributes:linkAttributes range:[result range]];
-        }
-
-    }];
- 
-    if (![self.attributedString isEqualToAttributedString:string]) {
-        self.attributedString = string;
-    }
-    
-}
-
 - (void)scanAttachments {
     
     __block NSMutableAttributedString *mutableAttributedString = nil;
@@ -1534,24 +1448,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     }
 }
 
-- (BOOL)selectedLinkAtIndex:(NSInteger)index {
-    
-    NSTextCheckingResult *_link = [self linkAtIndex:index];
-    if (_link!=nil) {
-        [self setLinkRange:[_link range]];
-        return YES;
-    }
-    
-    return NO;
-}
 
-- (void)openLink:(NSURL*)aURL {
-    
-    [[UIApplication sharedApplication] openURL:aURL];
-    
-    //self.
-    
-}
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1655,14 +1552,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
     if (gesture.state==UIGestureRecognizerStateBegan || gesture.state == UIGestureRecognizerStateChanged) {
         
-        if (_linkRange.length>0 && gesture.state == UIGestureRecognizerStateBegan) {
-            NSTextCheckingResult *link = [self linkAtIndex:_linkRange.location];
-            [self setLinkRangeFromTextCheckerResults:link];
-            gesture.enabled=NO;
-            gesture.enabled=YES;
-        }
-        
-    
         UIMenuController *menuController = [UIMenuController sharedMenuController];
         if ([menuController isMenuVisible]) {
             [menuController setMenuVisible:NO animated:NO];
@@ -1797,11 +1686,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     NSInteger index = [self closestWhiteSpaceIndexToPoint:[gesture locationInView:self]];
     
-    if (_delegateRespondsToDidSelectURL && !_editing) {
-        if ([self selectedLinkAtIndex:index]) {
-            return;
-        }
-    }
     
     UIMenuController *menuController = [UIMenuController sharedMenuController];
     if ([menuController isMenuVisible]) {
@@ -1863,30 +1747,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 }
 
 
-/////////////////////////////////////////////////////////////////////////////
-// MARK: -
-// MARK: UIActionSheetDelegate
-/////////////////////////////////////////////////////////////////////////////
-
-- (void)actionSheet:(UIActionSheet *)actionSheet willDismissWithButtonIndex:(NSInteger)buttonIndex {
-       
-    if (actionSheet.cancelButtonIndex != buttonIndex) {
-        
-        if (_delegateRespondsToDidChange) {
-            [self.delegate egoTextView:self didSelectURL:[NSURL URLWithString:actionSheet.title]];
-        } else {
-            [self openLink:[NSURL URLWithString:actionSheet.title]];
-        }
-        
-    } else {
-        
-        [self becomeFirstResponder];
-        
-    }
-    
-    [self setLinkRange:NSMakeRange(NSNotFound, 0)];
-
-}
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -2081,9 +1941,17 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         [menuController setMenuItems:[NSArray arrayWithObject:item]];
         
     }
-    
-    [menuController setMenuVisible:YES animated:YES];
-    
+    [menuController update];
+
+    double delayInSeconds = 1.0;
+    dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delayInSeconds * NSEC_PER_SEC));
+    dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
+        dispatch_async(dispatch_get_main_queue(), ^{
+            
+            [menuController setMenuVisible:YES animated:NO];
+            
+        });
+    });
 }
 
 
@@ -2289,7 +2157,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         
         self.userInteractionEnabled = NO;
         self.layer.geometryFlipped = YES;
-        self.backgroundColor = [UIColor whiteColor];
+        self.backgroundColor = [UIColor clearColor];
         
     }
     return self;
@@ -2380,6 +2248,7 @@ static const NSTimeInterval kBlinkRate = 1.0;
 
 - (void)drawRect:(CGRect)rect {
 
+    
     CGContextRef ctx = UIGraphicsGetCurrentContext();
     
     [[UIImage imageNamed:@"loupe-lo.png"] drawInRect:rect];
