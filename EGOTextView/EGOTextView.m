@@ -1019,7 +1019,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     } else {
         selectedNSRange = NSIntersectionRange(r.range, _selectedRange);
     }
-    
+    [_mutableAttributedString setAttributedString:self.attributedString];
     [_mutableAttributedString replaceCharactersInRange:r.range withString:text];        
     self.attributedString = _mutableAttributedString;
     self.selectedRange = selectedNSRange;
@@ -1045,7 +1045,8 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         
     NSRange selectedNSRange = self.selectedRange;
     NSRange markedTextRange = self.markedRange;
-    
+    [_mutableAttributedString setAttributedString:self.attributedString];
+
     if (markedTextRange.location != NSNotFound) {
         if (!markedText)
             markedText = @"";
