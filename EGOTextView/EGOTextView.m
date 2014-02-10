@@ -358,7 +358,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
     self.correctionRange = NSMakeRange(NSNotFound, 0);
     self.markedRange = NSMakeRange(NSNotFound, 0);
-    self.selectedRange = NSMakeRange([string string].length, 0);
+    //self.selectedRange = NSMakeRange([string string].length, 0);
     _attributedString = [string copy];
     
     //if (!_editing && !_editable) {
@@ -1676,7 +1676,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         self.selectedRange = NSMakeRange(_selectedRange.location, 0);
     }
     
-    NSInteger index = [self closestWhiteSpaceIndexToPoint:[gesture locationInView:self]];
+    NSInteger index = [self closestIndexToPoint:[gesture locationInView:self]];
     
     
     UIMenuController *menuController = [UIMenuController sharedMenuController];
