@@ -545,7 +545,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     [self drawBoundingRangeAsSelection:self.selectedRange cornerRadius:0.0f];
     [[EGOTextView spellingSelectionColor] setFill];
     [self drawBoundingRangeAsSelection:self.correctionRange cornerRadius:2.0f];
-        
+    [self drawBoundingRangeAsSelection:self.markedRange cornerRadius:0.0f];
 	CGPathRef framePath = CTFrameGetPath(_frame);
 	CGRect frameRect = CGPathGetBoundingBox(framePath);
         
