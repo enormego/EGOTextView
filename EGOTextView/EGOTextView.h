@@ -45,8 +45,6 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 
 - (void)egoTextViewDidChangeSelection:(EGOTextView *)textView;
 
-- (void)egoTextView:(EGOTextView*)textView didSelectURL:(NSURL*)URL;
-
 @end
 
 @protocol EGOTextAttachmentCell <NSObject>
@@ -66,7 +64,7 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 @private
     NSMutableAttributedString          *_mutableAttributedString;
     NSDictionary                       *_markedTextStyle;
-    id <UITextInputDelegate>           _inputDelegate;
+    __unsafe_unretained id <UITextInputDelegate>           _inputDelegate;
     UITextInputStringTokenizer         *_tokenizer;
     UITextChecker                      *_textChecker;
     UILongPressGestureRecognizer       *_longPress;
@@ -80,17 +78,12 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
     BOOL _delegateRespondsToDidChangeSelection;
     BOOL _delegateRespondsToDidSelectURL;
     
-    NSAttributedString  *_attributedString;
-    UIFont              *_font; 
     BOOL                _editing;
-    BOOL                _editable; 
-    BOOL                _spellCheck;
-    BOOL                _dataDetectors;
+    
     
     NSRange             _markedRange; 
     NSRange             _selectedRange;
     NSRange             _correctionRange;
-    NSRange             _linkRange;
 
     CTFramesetterRef    _framesetter;
     CTFrameRef          _frame;
@@ -100,11 +93,9 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
     EGOCaretView        *_caretView;
     EGOSelectionView    *_selectionView;
     
-    NSMutableArray      *_attachmentViews;
     
 }
 
-@property(nonatomic) UIDataDetectorTypes dataDetectorTypes; // UIDataDetectorTypeLink supported
 @property(nonatomic) UITextAutocapitalizationType autocapitalizationType;
 @property(nonatomic) UITextAutocorrectionType autocorrectionType;        
 @property(nonatomic) UIKeyboardType keyboardType;                       
@@ -112,10 +103,10 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
 @property(nonatomic) UIReturnKeyType returnKeyType;                    
 @property(nonatomic) BOOL enablesReturnKeyAutomatically; 
 
-@property(nonatomic,assign) id <EGOTextViewDelegate> delegate;
+@property(nonatomic,unsafe_unretained) id <EGOTextViewDelegate> delegate;
 @property(nonatomic,copy) NSAttributedString *attributedString;
 @property(nonatomic,copy) NSString *text;
-@property(nonatomic,retain) UIFont *font; // ignored when attributedString is not nil
+@property(nonatomic,strong) UIFont *font; // ignored when attributedString is not nil
 @property(nonatomic,getter=isEditable) BOOL editable; //default YES
 @property(nonatomic) NSRange selectedRange;
 @property(nonatomic) NSRange markedRange;
