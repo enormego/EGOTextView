@@ -223,8 +223,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     self.clipsToBounds = YES;
     
     EGOContentView *contentView = [[EGOContentView alloc] initWithFrame:CGRectInset(self.bounds, 8.0f, 8.0f)];
-  
-    contentView.autoresizingMask = self.autoresizingMask;
+
     contentView.delegate = self;
     [self addSubview:contentView];
     _textContentView = contentView;
@@ -311,7 +310,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     CGRect rect = _textContentView.frame;
     CGFloat height = [self boundingHeightForWidth:rect.size.width];
     rect.size.height = height+self.font.lineHeight;
-    _textContentView.frame = rect;    
+   _textContentView.frame = rect;
     self.contentSize = CGSizeMake(self.frame.size.width, rect.size.height+(self.font.lineHeight*2));
 
     UIBezierPath *path = [UIBezierPath bezierPathWithRect:_textContentView.bounds];
@@ -373,11 +372,14 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
 - (void)setAttributedString:(NSAttributedString*)string {
 
+    self.correctionRange = NSMakeRange(NSNotFound, 0);
+    self.markedRange = NSMakeRange(NSNotFound, 0);
+    self.selectedRange = NSMakeRange([string string].length, 0);
     _attributedString = [string copy];
     
-    if (!_editing && !_editable) {
+    //if (!_editing && !_editable) {
         [self scanAttachments];
-    }
+    //}
     
     [self textChanged];
 
@@ -1347,7 +1349,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
-    self.selectedRange = selectedNSRange;  
+    self.selectedRange = selectedNSRange;
         
     if (text.length > 1 || ([text isEqualToString:@" "] || [text isEqualToString:@"\n"])) {
         [self checkSpellingForRange:[self characterRangeAtIndex:self.selectedRange.location-1]];
@@ -1379,7 +1381,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         [_mutableAttributedString deleteCharactersInRange:selectedNSRange];
         [_mutableAttributedString endEditing];
         
-        selectedNSRange.location = markedTextRange.location;
+        //selectedNSRange.location = markedTextRange.location;
         selectedNSRange.length = 0;
         markedTextRange = NSMakeRange(NSNotFound, 0);
         
@@ -2217,13 +2219,16 @@ static const NSTimeInterval kBlinkRate = 1.0;
 }
 
 - (void)delayBlink {
-    
+    if ([self.layer animationForKey:@"BlinkAnimation"]) {
+        return;
+    }
     CAKeyframeAnimation *animation = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
     animation.values = [NSArray arrayWithObjects:[NSNumber numberWithFloat:1.0f], [NSNumber numberWithFloat:1.0f], [NSNumber numberWithFloat:0.0f], [NSNumber numberWithFloat:0.0f], nil];
     animation.calculationMode = kCAAnimationCubic;
     animation.duration = kBlinkRate;
     animation.beginTime = CACurrentMediaTime() + kInitialBlinkDelay;
     animation.repeatCount = CGFLOAT_MAX;
+    animation.removedOnCompletion = NO;
     [self.layer addAnimation:animation forKey:@"BlinkAnimation"];
     
 }

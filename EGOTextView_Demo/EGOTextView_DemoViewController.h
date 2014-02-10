@@ -7,9 +7,11 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "FacialView.h"
+
 
 @class EGOTextView;
-@interface EGOTextView_DemoViewController : UIViewController {
+@interface EGOTextView_DemoViewController : UIViewController <facialViewDelegate>{
     
     EGOTextView *_egoTextView;
     UITextView *_textView;
