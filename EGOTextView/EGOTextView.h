@@ -78,8 +78,6 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
     BOOL _delegateRespondsToDidChangeSelection;
     BOOL _delegateRespondsToDidSelectURL;
     
-    NSAttributedString  *_attributedString;
-    UIFont              *_font; 
     BOOL                _editing;
     
     
@@ -98,7 +96,6 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
     
 }
 
-@property(nonatomic) UIDataDetectorTypes dataDetectorTypes; // UIDataDetectorTypeLink supported
 @property(nonatomic) UITextAutocapitalizationType autocapitalizationType;
 @property(nonatomic) UITextAutocorrectionType autocorrectionType;        
 @property(nonatomic) UIKeyboardType keyboardType;                       

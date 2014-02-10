@@ -64,8 +64,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 // MARK: EGOContentView definition
 
 @interface EGOContentView : UIView {
-@private
-    id __weak _delegate;
 }
 @property(nonatomic,weak) id delegate;
 @end
@@ -106,9 +104,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 @interface EGOTextWindow : UIWindow {
 @private
     UIView              *_view;
-    EGOWindowType       _type;
-    EGOSelectionType    _selectionType;
-    BOOL                _showing;
     
 }
 @property(nonatomic,assign) EGOWindowType type;
@@ -137,7 +132,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 // MARK: UITextPosition  definition
 
 @interface EGOIndexedPosition : UITextPosition {
-    NSUInteger               _index;
     id <UITextInputDelegate> _inputDelegate;
 }
 
@@ -149,7 +143,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 // MARK: UITextRange definition
 
 @interface EGOIndexedRange : UITextRange {
-    NSRange _range;
 }
 
 @property (nonatomic) NSRange range;
@@ -190,9 +183,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 @implementation EGOTextView
 
 @synthesize delegate;
-@synthesize attributedString=_attributedString;
 @synthesize text=_text;
-@synthesize font=_font;
 @synthesize editable=_editable;
 @synthesize markedRange=_markedRange;
 @synthesize selectedRange=_selectedRange;
@@ -203,7 +194,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 @synthesize inputDelegate=_inputDelegate;
 @synthesize menuItemActions;
 
-@synthesize dataDetectorTypes;
 @synthesize autocapitalizationType;
 @synthesize autocorrectionType;
 @synthesize keyboardType;
@@ -259,13 +249,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     return self;
 }
 
-- (void)dealloc {
-    
-    _textWindow=nil;
-    _font=nil;
-    _attributedString=nil;
-    _caretView=nil;
-}
+
 
 - (void)clearPreviousLayoutInformation {
         
@@ -1071,7 +1055,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     
     selectedNSRange = NSMakeRange(selectedRange.location + markedTextRange.location, selectedRange.length);
     
-    //self.attributedString = _attributedString;
     self.attributedString = _mutableAttributedString;
     self.markedRange = markedTextRange;
     self.selectedRange = selectedNSRange;    
@@ -2098,7 +2081,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 /////////////////////////////////////////////////////////////////////////////
 
 @implementation EGOIndexedPosition 
-@synthesize index=_index;
 
 + (EGOIndexedPosition *)positionWithIndex:(NSUInteger)index {
     EGOIndexedPosition *pos = [[EGOIndexedPosition alloc] init];
@@ -2115,7 +2097,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 /////////////////////////////////////////////////////////////////////////////
 
 @implementation EGOIndexedRange 
-@synthesize range=_range;
 
 + (EGOIndexedRange *)rangeWithNSRange:(NSRange)theRange {
     if (theRange.location == NSNotFound)
@@ -2148,7 +2129,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
 @implementation EGOContentView
 
-@synthesize delegate=_delegate;
 
 - (id)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
@@ -2275,9 +2255,6 @@ static const NSTimeInterval kBlinkRate = 1.0;
 
 }
 
-- (void)dealloc {
-    _contentImage=nil;
-}
 
 @end
 
@@ -2289,9 +2266,6 @@ static const NSTimeInterval kBlinkRate = 1.0;
 
 @implementation EGOTextWindow
 
-@synthesize showing=_showing;
-@synthesize selectionType=_selectionType;
-@synthesize type=_type;
 
 static const CGFloat kLoupeScale = 1.2f;
 static const CGFloat kMagnifyScale = 1.0f;
@@ -2509,9 +2483,6 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     [self updateWindowTransform];
 }
 
-- (void)dealloc {
-    _view=nil;
-}
 
 @end
 
@@ -2555,10 +2526,6 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
     _contentImage = image;
     [self setNeedsDisplay];
     
-}
-
-- (void)dealloc {
-    _contentImage=nil;
 }
 
 @end
@@ -2631,12 +2598,5 @@ static const NSTimeInterval kDefaultAnimationDuration = 0.15f;
 
 }
 
-- (void)dealloc {
-    
-   _leftCaret=nil;
-   _rightCaret=nil;
-    _rightDot=nil;
-    _leftDot=nil;
-}
 
 @end
