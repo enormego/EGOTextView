@@ -221,7 +221,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     self.backgroundColor = [UIColor whiteColor];
     self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.clipsToBounds = YES;
-    
     EGOContentView *contentView = [[EGOContentView alloc] initWithFrame:CGRectInset(self.bounds, 8.0f, 8.0f)];
 
     contentView.delegate = self;
@@ -320,22 +319,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     if (frameRef!=NULL) {
         CFRelease(frameRef);
     }
-        
-    for (UIView *view in _attachmentViews) {
-        [view removeFromSuperview];
-    }
-    [_attributedString enumerateAttribute: EGOTextAttachmentAttributeName inRange: NSMakeRange(0, [_attributedString length]) options: 0 usingBlock: ^(id value, NSRange range, BOOL *stop) {
-        
-        if ([value respondsToSelector: @selector(attachmentView)]) {
-            UIView *view = [value attachmentView];
-            [_attachmentViews addObject: view];
-            
-            CGRect rect = [self firstRectForNSRange: range];
-            rect.size = [view frame].size;
-            [view setFrame: rect];
-            [self addSubview: view];
-        }
-    }];
+    
     
     [_textContentView setNeedsDisplay];
     
@@ -1369,6 +1353,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     if (_correctionRange.location != NSNotFound && _correctionRange.length > 0) {
         
         [_mutableAttributedString beginEditing];
+        [_mutableAttributedString removeAttribute:EGOTextAttachmentAttributeName range:self.correctionRange];
         [_mutableAttributedString deleteCharactersInRange:self.correctionRange];
         [_mutableAttributedString endEditing];
         selectedNSRange.location = self.correctionRange.location;
@@ -1378,6 +1363,8 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     } else if (markedTextRange.location != NSNotFound) {
         
         [_mutableAttributedString beginEditing];
+        [_mutableAttributedString removeAttribute:EGOTextAttachmentAttributeName range:selectedNSRange];
+
         [_mutableAttributedString deleteCharactersInRange:selectedNSRange];
         [_mutableAttributedString endEditing];
         
@@ -1388,6 +1375,8 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     } else if (selectedNSRange.length > 0) {
         
         [_mutableAttributedString beginEditing];
+        [_mutableAttributedString removeAttribute:EGOTextAttachmentAttributeName range:selectedNSRange];
+
         [_mutableAttributedString deleteCharactersInRange:selectedNSRange];
         [_mutableAttributedString endEditing];
         
@@ -1405,6 +1394,8 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
         selectedNSRange = [[_attributedString string] rangeOfComposedCharacterSequenceAtIndex:selectedNSRange.location - 1];
         
         [_mutableAttributedString beginEditing];
+        [_mutableAttributedString removeAttribute:EGOTextAttachmentAttributeName range:selectedNSRange];
+
         [_mutableAttributedString deleteCharactersInRange:selectedNSRange];
         [_mutableAttributedString endEditing];
         
@@ -1441,7 +1432,6 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
             // the retain here is balanced by the release in the Dealloc function
             CTRunDelegateRef runDelegate = CTRunDelegateCreate(&callbacks, (void*)CFBridgingRetain(value));
             [mutableAttributedString addAttribute: (NSString *)kCTRunDelegateAttributeName value: ( id)CFBridgingRelease(runDelegate) range:range];
-            CFRelease(runDelegate);
         }
     }];
     
@@ -2059,6 +2049,9 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     [[UIPasteboard generalPasteboard] setValue:string forPasteboardType:@"public.utf8-plain-text"];
     
     [_mutableAttributedString setAttributedString:self.attributedString];
+    
+    [_mutableAttributedString removeAttribute:EGOTextAttachmentAttributeName range:_selectedRange];
+
     [_mutableAttributedString deleteCharactersInRange:_selectedRange];
     
     [self.inputDelegate textWillChange:self];       
@@ -2080,6 +2073,8 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 - (void)delete:(id)sender {
         
     [_mutableAttributedString setAttributedString:self.attributedString];
+    [_mutableAttributedString removeAttribute:EGOTextAttachmentAttributeName range:_selectedRange];
+
     [_mutableAttributedString deleteCharactersInRange:_selectedRange];
     [self.inputDelegate textWillChange:self];       
     [self setAttributedString:_mutableAttributedString];

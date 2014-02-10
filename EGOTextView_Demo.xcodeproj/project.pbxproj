@@ -114,6 +114,9 @@
 		77B17BFF18A8B37B007281B3 /* emotionImage.old.plist in Resources */ = {isa = PBXBuildFile; fileRef = 77B17BAA18A8B37B007281B3 /* emotionImage.old.plist */; };
 		77B17C0018A8B37B007281B3 /* emotionImage.plist in Resources */ = {isa = PBXBuildFile; fileRef = 77B17BAB18A8B37B007281B3 /* emotionImage.plist */; };
 		77B17C0118A8B37B007281B3 /* Property List.plist in Resources */ = {isa = PBXBuildFile; fileRef = 77B17BAC18A8B37B007281B3 /* Property List.plist */; };
+		77B17C0518A8CDE3007281B3 /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 77B17C0218A8CDE3007281B3 /* Default-568h@2x.png */; };
+		77B17C0618A8CDE3007281B3 /* Default.png in Resources */ = {isa = PBXBuildFile; fileRef = 77B17C0318A8CDE3007281B3 /* Default.png */; };
+		77B17C0718A8CDE3007281B3 /* Default@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 77B17C0418A8CDE3007281B3 /* Default@2x.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -231,6 +234,9 @@
 		77B17BAA18A8B37B007281B3 /* emotionImage.old.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = emotionImage.old.plist; sourceTree = "<group>"; };
 		77B17BAB18A8B37B007281B3 /* emotionImage.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = emotionImage.plist; sourceTree = "<group>"; };
 		77B17BAC18A8B37B007281B3 /* Property List.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "Property List.plist"; sourceTree = "<group>"; };
+		77B17C0218A8CDE3007281B3 /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
+		77B17C0318A8CDE3007281B3 /* Default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Default.png; sourceTree = "<group>"; };
+		77B17C0418A8CDE3007281B3 /* Default@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default@2x.png"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -305,6 +311,9 @@
 		03FF5ED1135CA49D00268656 /* EGOTextView_Demo */ = {
 			isa = PBXGroup;
 			children = (
+				77B17C0218A8CDE3007281B3 /* Default-568h@2x.png */,
+				77B17C0318A8CDE3007281B3 /* Default.png */,
+				77B17C0418A8CDE3007281B3 /* Default@2x.png */,
 				77B17B5718A8B37B007281B3 /* emotion */,
 				77B17B5418A8B366007281B3 /* FacialView.h */,
 				77B17B5518A8B366007281B3 /* FacialView.m */,
@@ -492,7 +501,9 @@
 				77B17BB218A8B37B007281B3 /* emotion12.png in Resources */,
 				03FF5ED6135CA49D00268656 /* InfoPlist.strings in Resources */,
 				77B17BBB18A8B37B007281B3 /* emotion20.png in Resources */,
+				77B17C0618A8CDE3007281B3 /* Default.png in Resources */,
 				77B17C0018A8B37B007281B3 /* emotionImage.plist in Resources */,
+				77B17C0718A8CDE3007281B3 /* Default@2x.png in Resources */,
 				77B17BFC18A8B37B007281B3 /* emotion8.png in Resources */,
 				77B17BEB18A8B37B007281B3 /* emotion64.png in Resources */,
 				77B17BC318A8B37B007281B3 /* emotion28.png in Resources */,
@@ -557,6 +568,7 @@
 				77B17BCD18A8B37B007281B3 /* emotion37.png in Resources */,
 				77B17BEA18A8B37B007281B3 /* emotion63.png in Resources */,
 				03644E9513611C720015EC74 /* magnifier-ranged-mask@2x.png in Resources */,
+				77B17C0518A8CDE3007281B3 /* Default-568h@2x.png in Resources */,
 				77B17BEE18A8B37B007281B3 /* emotion67.png in Resources */,
 				77B17BB318A8B37B007281B3 /* emotion13.png in Resources */,
 				77B17BC118A8B37B007281B3 /* emotion26.png in Resources */,

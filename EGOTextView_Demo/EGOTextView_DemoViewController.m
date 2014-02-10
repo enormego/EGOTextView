@@ -26,11 +26,14 @@
 
 - (CGSize) attachmentSize
 {
-    return CGSizeMake(30, 30);
+    return CGSizeMake(20, 20);
 }
 
 - (void) attachmentDrawInRect: (CGRect)r
 {
+    CGContextRef ctx = UIGraphicsGetCurrentContext();
+
+    CGContextDrawImage(ctx, r, _image.CGImage);
 
 }
 
@@ -134,7 +137,7 @@
 
 -(void)selectedFacialView:(NSString*)str
 {
-    NSMutableAttributedString *attributedString = [[NSMutableAttributedString alloc] initWithAttributedString:self.egoTextView.attributedString];
+    NSMutableAttributedString *attributedString = [self.egoTextView.attributedString mutableCopy];
     
     [attributedString replaceCharactersInRange:self.egoTextView.selectedRange withString:@"\ufffc"];
     NSRange emoticonRange = self.egoTextView.selectedRange;

@@ -95,7 +95,6 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
     EGOCaretView        *_caretView;
     EGOSelectionView    *_selectionView;
     
-    NSMutableArray      *_attachmentViews;
     
 }
 
