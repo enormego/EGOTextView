@@ -195,6 +195,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 @synthesize text=_text;
 @synthesize font=_font;
 @synthesize editable=_editable;
+@synthesize correctable = _correctable;
 @synthesize markedRange=_markedRange;
 @synthesize selectedRange=_selectedRange;
 @synthesize correctionRange=_correctionRange;
@@ -417,6 +418,22 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     _delegateRespondsToDidChangeSelection = [delegate respondsToSelector:@selector(egoTextViewDidChangeSelection:)];
     _delegateRespondsToDidSelectURL = [delegate respondsToSelector:@selector(egoTextView:didSelectURL:)];
     
+}
+
+- (void)setCorrectable:(BOOL)correctable {
+    if (!_editable)
+        return;
+
+    if (correctable) {
+        if (!_textChecker)
+            _textChecker = [[UITextChecker alloc] init];
+    } else {
+        if (_textChecker!=nil) {
+            [_textChecker release],
+            _textChecker=nil;
+        }
+    }
+    _correctable = correctable;
 }
 
 - (void)setEditable:(BOOL)editable {
