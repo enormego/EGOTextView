@@ -1642,7 +1642,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 }
 
 - (void)checkSpellingForRange:(NSRange)range {
-    
+    if (!self.correctable) return;
     [_mutableAttributedString setAttributedString:self.attributedString];
         
     NSInteger location = range.location-1;
