@@ -70,7 +70,7 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
     UITextInputStringTokenizer         *_tokenizer;
     UITextChecker                      *_textChecker;
     UILongPressGestureRecognizer       *_longPress;
-    
+
     BOOL _ignoreSelectionMenu;
     BOOL _delegateRespondsToShouldBeginEditing;
     BOOL _delegateRespondsToShouldEndEditing;
@@ -79,38 +79,38 @@ extern NSString * const EGOTextAttachmentPlaceholderString;
     BOOL _delegateRespondsToDidChange;
     BOOL _delegateRespondsToDidChangeSelection;
     BOOL _delegateRespondsToDidSelectURL;
-    
+
     NSAttributedString  *_attributedString;
-    UIFont              *_font; 
+    UIFont              *_font;
     BOOL                _editing;
-    BOOL                _editable; 
+    BOOL                _editable;
     BOOL                _spellCheck;
     BOOL                _dataDetectors;
-    
-    NSRange             _markedRange; 
+
+    NSRange             _markedRange;
     NSRange             _selectedRange;
     NSRange             _correctionRange;
     NSRange             _linkRange;
 
     CTFramesetterRef    _framesetter;
     CTFrameRef          _frame;
-    
+
     EGOContentView      *_textContentView;
     EGOTextWindow       *_textWindow;
     EGOCaretView        *_caretView;
     EGOSelectionView    *_selectionView;
-    
+
     NSMutableArray      *_attachmentViews;
-    
+
 }
 
 @property(nonatomic) UIDataDetectorTypes dataDetectorTypes; // UIDataDetectorTypeLink supported
 @property(nonatomic) UITextAutocapitalizationType autocapitalizationType;
-@property(nonatomic) UITextAutocorrectionType autocorrectionType;        
-@property(nonatomic) UIKeyboardType keyboardType;                       
-@property(nonatomic) UIKeyboardAppearance keyboardAppearance;             
-@property(nonatomic) UIReturnKeyType returnKeyType;                    
-@property(nonatomic) BOOL enablesReturnKeyAutomatically; 
+@property(nonatomic) UITextAutocorrectionType autocorrectionType;
+@property(nonatomic) UIKeyboardType keyboardType;
+@property(nonatomic) UIKeyboardAppearance keyboardAppearance;
+@property(nonatomic) UIReturnKeyType returnKeyType;
+@property(nonatomic) BOOL enablesReturnKeyAutomatically;
 
 @property(nonatomic,assign) id <EGOTextViewDelegate> delegate;
 @property(nonatomic,copy) NSAttributedString *attributedString;
