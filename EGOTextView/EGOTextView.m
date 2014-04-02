@@ -160,7 +160,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
 @interface EGOTextView (Private)
 
-- (CGRect)caretRectForIndex:(int)index;
+- (CGRect)caretRectForIndex:(NSInteger)index;
 - (CGRect)firstRectForNSRange:(NSRange)range;
 - (NSInteger)closestIndexToPoint:(CGPoint)point;
 - (NSRange)characterRangeAtPoint_:(CGPoint)point;
@@ -172,6 +172,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 - (void)checkLinksForRange:(NSRange)range;
 - (void)scanAttachments;
 - (void)showMenu;
+
 - (CGRect)menuPresentationRect;
 
 + (UIColor *)selectionColor;
@@ -2124,7 +2125,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
 
         for (NSString *word in guesses){
 
-            NSString *selString = [NSString stringWithFormat:@"spellCheckMenu_%i:", [word hash]];
+            NSString *selString = [NSString stringWithFormat:@"spellCheckMenu_%lu:", (unsigned long)[word hash]];
             SEL sel = sel_registerName([selString UTF8String]);
 
             [self.menuItemActions setObject:word forKey:NSStringFromSelector(sel)];
