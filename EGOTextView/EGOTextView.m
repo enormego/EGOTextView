@@ -321,6 +321,7 @@ static CGFloat AttachmentRunDelegateGetWidth(void *refCon) {
     CGRect rect = _textContentView.frame;
     CGFloat height = [self boundingHeightForWidth:rect.size.width];
     rect.size.height = height+self.font.lineHeight;
+    rect.size.height = round(rect.size.height);
     _textContentView.frame = rect;
     self.contentSize = CGSizeMake(self.frame.size.width, rect.size.height+(self.font.lineHeight*2));
 
